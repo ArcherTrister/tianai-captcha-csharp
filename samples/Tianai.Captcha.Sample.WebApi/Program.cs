@@ -18,25 +18,6 @@ var captchaBuilder = builder.Services.AddTianaiCaptcha(options =>
 })
 .AddResourceAssembly(Assembly.GetExecutingAssembly());
 
-// 示例：扫描目录资源（已注释，因为项目中的Resources资源文件类型是embedded）
-// var resourceDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Resources");
-// captchaBuilder.ScanDirectory(resourceDirectory);
-
-// // 自定义背景图列表
-// var bgImages = new[] { "48.jpg", "a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "g.jpg", "h.jpg", "i.jpg", "j.jpg" };
-// // 注册自定义背景图（对应 Java addResource）
-// foreach (var img in bgImages)
-// {
-//     foreach (var type in allCaptchaType)
-//     {
-//         captchaBuilder.AddResource(type, new CaptchaResource("embedded", $"Resources.BgImages.{img}"));
-//     }
-// }
-
-// // 注册自定义滑块模板（对应 Java addTemplate）
-// captchaBuilder.AddSliderTemplate("Resources.Templates.Slider.active_1.png");
-// captchaBuilder.AddSliderTemplate("Resources.Templates.Slider.fixed_1.png");
-
 var app = builder.Build();
 
 app.UseStaticFiles();
