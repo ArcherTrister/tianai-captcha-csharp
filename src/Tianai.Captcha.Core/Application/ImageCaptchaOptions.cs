@@ -12,7 +12,7 @@ public class ImageCaptchaOptions
     /// <summary>
     /// 是否初始化默认资源 (对应 Java initDefaultResource，默认 false)
     /// </summary>
-    public bool InitDefaultResource { get; set; }
+    public bool InitDefaultResource { get; set; } = true;
     
     /// <summary>
     /// 默认资源前缀
@@ -76,10 +76,5 @@ public class ImageCaptchaOptions
     public long GetExpire(CaptchaType type)
     {
         return Expire.GetValueOrDefault(type, DefaultCaptchaExpire);
-    }
-
-    public ImageCaptchaOptions()
-    {
-        InitDefaultResource = true;
     }
 }
