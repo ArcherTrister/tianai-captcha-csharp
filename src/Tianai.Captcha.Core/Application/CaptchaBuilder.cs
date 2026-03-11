@@ -20,7 +20,7 @@ public class CaptchaBuilder
     private ICaptchaInterceptor? _interceptor;
     private IImageTransform? _imageTransform;
     private ImageCaptchaOptions _options = new();
-    private bool _addDefaultTemplate;
+    //private bool _addDefaultTemplate;
     private readonly List<CaptchaResource> _fonts = new();
     private readonly List<(CaptchaType type, CaptchaResource resource)> _resources = new();
     private readonly List<(CaptchaType type, ResourceMap template)> _templates = new();
@@ -35,12 +35,12 @@ public class CaptchaBuilder
     public CaptchaBuilder SetImageTransform(IImageTransform transform) { _imageTransform = transform; return this; }
     public CaptchaBuilder SetOptions(ImageCaptchaOptions options) { _options = options; return this; }
 
-    public CaptchaBuilder AddDefaultTemplate()
-    {
-        _addDefaultTemplate = true;
-
-        return this;
-    }
+    // public CaptchaBuilder AddDefaultTemplate()
+    // {
+    //     _addDefaultTemplate = true;
+    //
+    //     return this;
+    // }
 
     public CaptchaBuilder AddFont(CaptchaResource fontResource) { _fonts.Add(fontResource); return this; }
 
@@ -106,7 +106,7 @@ public class CaptchaBuilder
         generator.Init();
 
         // Add default templates
-        if (_addDefaultTemplate)
+        if (_options.InitDefaultResource)
         {
             DefaultBuiltInResources.AddDefaultResources(resourceStore, _options.DefaultResourcePrefix);
         }

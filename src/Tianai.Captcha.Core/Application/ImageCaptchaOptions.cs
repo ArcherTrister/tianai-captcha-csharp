@@ -10,9 +10,19 @@ public class ImageCaptchaOptions
     public string Prefix { get; set; } = "captcha";
     
     /// <summary>
+    /// 是否初始化默认资源 (对应 Java initDefaultResource，默认 false)
+    /// </summary>
+    public bool InitDefaultResource { get; set; }
+    
+    /// <summary>
     /// 默认资源前缀
     /// </summary>
     public string DefaultResourcePrefix { get; set; } = "Tianai.Captcha.Core.Resources";
+    
+    /// <summary>
+    /// 字体包路径 (格式: "type:path?tag=xxx")
+    /// </summary>
+    public List<string>? FontPath { get; set; }
     
     /// <summary>
     /// 默认验证码过期时间(毫秒)
@@ -66,5 +76,10 @@ public class ImageCaptchaOptions
     public long GetExpire(CaptchaType type)
     {
         return Expire.GetValueOrDefault(type, DefaultCaptchaExpire);
+    }
+
+    public ImageCaptchaOptions()
+    {
+        InitDefaultResource = true;
     }
 }

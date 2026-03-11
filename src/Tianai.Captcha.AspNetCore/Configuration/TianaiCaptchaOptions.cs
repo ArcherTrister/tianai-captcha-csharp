@@ -8,16 +8,6 @@ namespace Tianai.Captcha.AspNetCore.Configuration;
 public class TianaiCaptchaOptions : ImageCaptchaOptions
 {
     /// <summary>
-    /// 是否初始化默认资源 (对应 Java initDefaultResource，默认 false)
-    /// </summary>
-    public bool InitDefaultResource { get; set; }
-
-    /// <summary>
-    /// 字体包路径 (格式: "type:path?tag=xxx")
-    /// </summary>
-    public List<string>? FontPath { get; set; }
-
-    /// <summary>
     /// 二次验证配置
     /// </summary>
     public SecondaryVerificationOptions? Secondary { get; set; }
@@ -42,16 +32,8 @@ public class TianaiCaptchaOptions : ImageCaptchaOptions
     /// </summary>
     public TianaiCaptchaOptions()
     {
-        InitDefaultResource = false;
         CustomBackgroundResources = new();
         CustomTemplateResources = new();
         CustomFontResources = new();
     }
-}
-
-public class SecondaryVerificationOptions
-{
-    public bool Enabled { get; set; }
-    public long Expire { get; set; } = 120000;
-    public string KeyPrefix { get; set; } = "captcha:secondary";
 }

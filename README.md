@@ -139,46 +139,48 @@ string? captchaType = _captchaApplication.GetCaptchaTypeById(captchaId);
 ```csharp
 builder.Services.AddTianaiCaptcha(options =>
 {
-    // 验证码过期时间（秒）
-    options.ExpireSeconds = 300;
+    // 是否初始化默认资源
+    options.InitDefaultResource = true;
     
-    // 验证码缓存键前缀
-    options.CacheKeyPrefix = "tianai:captcha:";
+    // 缓存键前缀
+    options.Prefix = "tianai:captcha";
     
-    // 资源管理配置
-    options.ResourceManager = resourceOptions =>
-    {
-        // 资源扫描路径
-        resourceOptions.ScanPaths = new List<string>
-        {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources")
-        };
-    };
+    // 各验证码类型的过期时间(毫秒)
+    options.Expire[CaptchaType.Slider] = 300000; // 5分钟
+    options.Expire[CaptchaType.Rotate] = 300000; // 5分钟
+    options.Expire[CaptchaType.Concat] = 300000; // 5分钟
+    options.Expire[CaptchaType.WordImageClick] = 300000; // 5分钟
+    
+    // 启用本地缓存
+    options.LocalCacheEnabled = true;
+    options.LocalCacheSize = 50;
+    
+    // 启用预生成池
+    options.PregenerationPoolEnabled = true;
+    options.PregenerationPoolMaxCapacity = 100;
+    options.PregenerationPoolMinThreshold = 50;
 });
 ```
 
-### 4.2 验证码生成配置
+### 4.2 自定义资源配置
 
 ```csharp
 builder.Services.AddTianaiCaptcha(options =>
 {
-    options.Generator = generatorOptions =>
+    // 初始化默认资源
+    options.InitDefaultResource = true;
+    
+    // 添加自定义字体路径
+    options.FontPath = new List<string>
     {
-        // 滑块验证码配置
-        generatorOptions.Slider = sliderOptions =>
-        {
-            sliderOptions.TemplateSize = new Size(60, 60);
-            sliderOptions.BackgroundSize = new Size(300, 150);
-        };
-        
-        // 旋转验证码配置
-        generatorOptions.Rotate = rotateOptions =>
-        {
-            rotateOptions.ImageSize = new Size(300, 300);
-            rotateOptions.MaxAngle = 45;
-        };
+        "embedded:YourAssembly.Resources.Fonts.font.ttf"
     };
 });
+
+// 通过扩展方法添加资源
+builder.Services.AddTianaiCaptcha()
+    .AddResourceAssembly(Assembly.GetExecutingAssembly())
+    .ScanDirectory(Path.Combine(Directory.GetCurrentDirectory(), "Resources"));
 ```
 
 ## 5. 资源管理
@@ -204,13 +206,17 @@ builder.Services.AddTianaiCaptcha(options =>
 ```csharp
 builder.Services.AddTianaiCaptcha(options =>
 {
-    // 启用预生成
-    options.Pregeneration = pregenOptions =>
-    {
-        pregenOptions.Enabled = true;
-        pregenOptions.PoolSize = 100;
-        pregenOptions.GenerationInterval = TimeSpan.FromSeconds(5);
-    };
+    // 启用预生成池
+    options.PregenerationPoolEnabled = true;
+    
+    // 预生成池的最大容量
+    options.PregenerationPoolMaxCapacity = 100;
+    
+    // 预生成池的最低阈值，当低于此值时会触发批量生成
+    options.PregenerationPoolMinThreshold = 50;
+    
+    // 预生成池检查的时间间隔（毫秒）
+    options.PregenerationPoolCheckIntervalMs = 30000;
 });
 ```
 

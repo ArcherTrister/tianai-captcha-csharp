@@ -1,10 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
-using System.IO;
+using System.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Tianai.Captcha.AspNetCore.Extensions;
 using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
-using EndpointRouteBuilderExtensions = Tianai.Captcha.AspNetCore.Extensions.EndpointRouteBuilderExtensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
