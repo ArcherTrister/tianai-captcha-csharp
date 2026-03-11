@@ -1,9 +1,5 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -206,11 +202,24 @@ public static class ServiceCollectionExtensions
         return builder;
     }
 
+    // 用于跟踪已注册的程序集，防止重复注册
+    private static readonly HashSet<Assembly> _registeredAssemblies = new HashSet<Assembly>();
+    
+    // 用于存储需要扫描的目录路径，确保只创建一个 DirectoryScannerService
+    private static readonly List<string> _directoriesToScan = new List<string>();
+
     /// <summary>
     /// 注册额外程序集用于嵌入资源查找（对应 Java classpath 资源搜索）
     /// </summary>
-    public static ITianaiCaptchaBuilder AddResourceAssembly(this ITianaiCaptchaBuilder builder, Assembly assembly)
+    public static ITianaiCaptchaBuilder ScanAssembly(this ITianaiCaptchaBuilder builder, Assembly assembly)
     {
+        // 检查程序集是否已经注册过，防止重复注册
+        if (!_registeredAssemblies.Add(assembly))
+        {
+            Debug.WriteLine($"程序集已注册，跳过: {assembly.FullName}");
+            return builder;
+        }
+
         // 直接向服务容器中添加一个单例来存储程序集
         builder.Services.AddSingleton(assembly);
         
@@ -222,7 +231,7 @@ public static class ServiceCollectionExtensions
             var serviceProvider = builder.Services.BuildServiceProvider();
             var resourceManager = serviceProvider.GetService<IImageCaptchaResourceManager>();
             
-            Debug.WriteLine($"AddResourceAssembly 被调用，程序集：{assembly.FullName}");
+            Debug.WriteLine($"ScanAssembly 被调用，程序集：{assembly.FullName}");
             
             if (resourceManager != null)
             {
@@ -281,11 +290,24 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static ITianaiCaptchaBuilder ScanDirectory(this ITianaiCaptchaBuilder builder, string directoryPath)
     {
-        builder.Services.AddSingleton<IHostedService, DirectoryScannerService>(sp =>
+        // 添加目录路径到列表
+        _directoriesToScan.Add(directoryPath);
+        
+        // 检查是否已经添加了 DirectoryScannerService
+        var serviceDescriptor = builder.Services.FirstOrDefault(descriptor => 
+            descriptor.ServiceType == typeof(IHostedService) && 
+            descriptor.ImplementationType == typeof(DirectoryScannerService));
+        
+        // 如果还没有添加服务，则添加一次
+        if (serviceDescriptor == null)
         {
-            var resourceManager = sp.GetRequiredService<IImageCaptchaResourceManager>();
-            return new DirectoryScannerService(resourceManager, directoryPath);
-        });
+            builder.Services.AddSingleton<IHostedService, DirectoryScannerService>(sp =>
+            {
+                var resourceManager = sp.GetRequiredService<IImageCaptchaResourceManager>();
+                return new DirectoryScannerService(resourceManager, _directoriesToScan);
+            });
+        }
+        
         return builder;
     }
 
@@ -295,12 +317,12 @@ public static class ServiceCollectionExtensions
     private class DirectoryScannerService : IHostedService
     {
         private readonly IImageCaptchaResourceManager _resourceManager;
-        private readonly string _directoryPath;
+        private readonly List<string> _directoryPaths;
 
-        public DirectoryScannerService(IImageCaptchaResourceManager resourceManager, string directoryPath)
+        public DirectoryScannerService(IImageCaptchaResourceManager resourceManager, List<string> directoryPaths)
         {
             _resourceManager = resourceManager;
-            _directoryPath = directoryPath;
+            _directoryPaths = directoryPaths;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -309,7 +331,10 @@ public static class ServiceCollectionExtensions
                 .OfType<FileResourceProvider>().FirstOrDefault();
             if (fileProvider != null)
             {
-                fileProvider.ScanDirectory(_directoryPath);
+                foreach (var directoryPath in _directoryPaths)
+                {
+                    fileProvider.ScanDirectory(directoryPath);
+                }
             }
             return Task.CompletedTask;
         }

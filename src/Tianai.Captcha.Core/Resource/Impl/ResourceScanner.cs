@@ -289,7 +289,16 @@ namespace Tianai.Captcha.Core.Resource.Impl;
                 // 添加所有模板资源到同一个ResourceMap
                 foreach (var (fileName, resourceName) in templateNameGroup.Value)
                 {
-                    var resourceKey = fileName.StartsWith("active_") ? "active.png" : "fixed.png";
+                    string resourceKey;
+                    if (fileName.StartsWith("active_"))
+                        resourceKey = "active.png";
+                    else if (fileName.StartsWith("fixed_"))
+                        resourceKey = "fixed.png";
+                    else if (fileName.StartsWith("mask_"))
+                        resourceKey = "mask.png";
+                    else
+                        continue; // 跳过未知模板类型
+                    
                     resourceMap.Put(resourceKey, new CaptchaResource
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -477,18 +486,27 @@ namespace Tianai.Captcha.Core.Resource.Impl;
                     };
                     
                     // 添加所有模板资源到同一个ResourceMap
-                    foreach (var (file, relativePath) in templateNameGroup.Value)
+                foreach (var (file, relativePath) in templateNameGroup.Value)
+                {
+                    var fileName = Path.GetFileName(file);
+                    string resourceKey;
+                    if (fileName.StartsWith("active_"))
+                        resourceKey = "active.png";
+                    else if (fileName.StartsWith("fixed_"))
+                        resourceKey = "fixed.png";
+                    else if (fileName.StartsWith("mask_"))
+                        resourceKey = "mask.png";
+                    else
+                        continue; // 跳过未知模板类型
+                    
+                    resourceMap.Put(resourceKey, new CaptchaResource
                     {
-                        var fileName = Path.GetFileName(file);
-                        var resourceKey = fileName.StartsWith("active_") ? "active.png" : "fixed.png";
-                        resourceMap.Put(resourceKey, new CaptchaResource
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Type = "file",
-                            Data = Path.Combine("Templates", Path.GetFileName(typeDir), relativePath),
-                            Tag = CommonConstant.DefaultTag
-                        });
-                    }
+                        Id = Guid.NewGuid().ToString(),
+                        Type = "file",
+                        Data = Path.Combine("Templates", Path.GetFileName(typeDir), relativePath),
+                        Tag = CommonConstant.DefaultTag
+                    });
+                }
                     
                     // 处理 ALL 类型
                     if (string.Equals(type, "ALL", StringComparison.OrdinalIgnoreCase))

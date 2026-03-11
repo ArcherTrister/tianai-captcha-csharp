@@ -8,6 +8,7 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
 {
     public const string TemplateActiveImageName = "active.png";
     public const string TemplateFixedImageName = "fixed.png";
+    public const string TemplateMaskImageName = "mask.png";
 
     protected override void DoInit() { }
 
@@ -22,6 +23,7 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
 
         using var fixedTemplate = GetTemplateImage(templateResource, TemplateFixedImageName);
         using var activeTemplate = GetTemplateImage(templateResource, TemplateActiveImageName);
+        using var maskTemplate = GetTemplateImageOrNull(templateResource, TemplateMaskImageName);
         var background = GetResourceImage(resourceImage);
 
         int randomX = RandomInt(fixedTemplate.Width + 5, Math.Max(fixedTemplate.Width + 6, background.Width - fixedTemplate.Width - 10));
@@ -41,17 +43,42 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
             CaptchaImageUtils.OverlayImage(background, obfuscateImage, obfuscateX, randomY);
         }
 
-        // Overlay active template on cut image
-        CaptchaImageUtils.OverlayImage(cutImage, activeTemplate, 0, 0);
+        // Process cut image with active template and mask
+        var processedImage = cutImage;
+        bool disposeProcessedImage = false;
+        
+        try
+        {
+            // Apply mask if available
+            if (maskTemplate != null)
+            {
+                var maskedImage = CaptchaImageUtils.CreateTransparentImage(processedImage.Width, processedImage.Height);
+                CaptchaImageUtils.OverlayImage(maskedImage, processedImage, 0, 0);
+                CaptchaImageUtils.OverlayImage(maskedImage, maskTemplate, 0, 0);
+                
+                processedImage = maskedImage;
+                disposeProcessedImage = true;
+            }
+            
+            // Overlay active template on processed image
+            CaptchaImageUtils.OverlayImage(processedImage, activeTemplate, 0, 0);
 
-        // Create the template image (full height, slider at randomY position)
-        var matrixTemplate = CaptchaImageUtils.CreateTransparentImage(activeTemplate.Width, background.Height);
-        CaptchaImageUtils.OverlayImage(matrixTemplate, cutImage, 0, randomY);
-        cutImage.Dispose();
-
-        exchange.BackgroundImage = background;
-        exchange.TemplateImage = matrixTemplate;
-        exchange.TransferData = new SliderTransferData(randomX, randomY);
+            // Create the template image (full height, slider at randomY position)
+            var matrixTemplate = CaptchaImageUtils.CreateTransparentImage(activeTemplate.Width, background.Height);
+            CaptchaImageUtils.OverlayImage(matrixTemplate, processedImage, 0, randomY);
+            
+            exchange.BackgroundImage = background;
+            exchange.TemplateImage = matrixTemplate;
+            exchange.TransferData = new SliderTransferData(randomX, randomY);
+        }
+        finally
+        {
+            if (disposeProcessedImage)
+            {
+                processedImage.Dispose();
+            }
+            cutImage.Dispose();
+        }
     }
 
     protected override ImageCaptchaInfo DoWrapImageCaptchaInfo(CaptchaExchange exchange)

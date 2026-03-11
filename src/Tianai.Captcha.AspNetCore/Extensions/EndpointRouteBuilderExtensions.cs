@@ -56,6 +56,20 @@ public static class EndpointRouteBuilderExtensions
             return Results.Json(result);
         });
 
+        group.MapPost("/verify-secondary", async (HttpContext context, IImageCaptchaApplication app) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<SecondaryVerifyRequest>(context.Request.Body, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            if (body == null || string.IsNullOrEmpty(body.Token))
+                return Results.Json(ApiResponse<object>.OfCheckError("token is required"));
+
+            var result = app.VerifySecondaryToken(body.Token);
+            return Results.Json(result);
+        });
+
         return endpoints;
     }
 
@@ -69,5 +83,10 @@ public static class EndpointRouteBuilderExtensions
         public long StartTime { get; set; }
         public long StopTime { get; set; }
         public List<ImageCaptchaTrack.Track>? Tracks { get; set; }
+    }
+
+    private class SecondaryVerifyRequest
+    {
+        public string? Token { get; set; }
     }
 }

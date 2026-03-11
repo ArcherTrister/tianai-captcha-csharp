@@ -97,7 +97,8 @@ var result4 = _captchaApplication.GenerateCaptcha(CaptchaType.Rotate, CaptchaIma
 var param = new GenerateParam
 {
     CaptchaType = CaptchaType.Slider,
-    ImageType = CaptchaImageType.WebP,
+    BackgroundFormatName = "webp",
+    TemplateFormatName = "webp",
     // 其他参数...
 };
 var result5 = _captchaApplication.GenerateCaptcha(param);
@@ -169,17 +170,14 @@ builder.Services.AddTianaiCaptcha(options =>
 {
     // 初始化默认资源
     options.InitDefaultResource = true;
-    
-    // 添加自定义字体路径
-    options.FontPath = new List<string>
-    {
-        "embedded:YourAssembly.Resources.Fonts.font.ttf"
-    };
+
+    // 添加自定义字体资源
+    options.CustomFontResources.Add(("Fonts", new CaptchaResource("embedded", "YourAssembly.Resources.Fonts.font.ttf")));
 });
 
 // 通过扩展方法添加资源
 builder.Services.AddTianaiCaptcha()
-    .AddResourceAssembly(Assembly.GetExecutingAssembly())
+    .ScanAssembly(Assembly.GetExecutingAssembly())
     .ScanDirectory(Path.Combine(Directory.GetCurrentDirectory(), "Resources"));
 ```
 
@@ -195,7 +193,23 @@ builder.Services.AddTianaiCaptcha()
    - `Templates/Slider`：滑块验证码模板
    - `Templates/Rotate`：旋转验证码模板
 
-### 5.2 内置资源
+### 5.2 旋转验证码模板蒙版
+
+旋转验证码支持模板蒙版功能，您可以为旋转验证码添加蒙版图片，增强验证码的安全性和美观度：
+
+1. 在 `Templates/Rotate` 目录下添加 `mask.png` 文件作为蒙版图片
+2. 蒙版图片会自动应用到验证码生成过程中
+3. 如果没有提供蒙版图片，验证码会正常生成，不影响功能
+
+### 5.3 滑块验证码模板蒙版
+
+滑块验证码也支持模板蒙版功能，您可以为滑块验证码添加蒙版图片，增强验证码的安全性和美观度：
+
+1. 在 `Templates/Slider` 目录下添加 `mask.png` 文件作为蒙版图片
+2. 蒙版图片会自动应用到验证码生成过程中
+3. 如果没有提供蒙版图片，验证码会正常生成，不影响功能
+
+### 5.4 内置资源
 
 库中已内置了一些默认资源，位于 `Tianai.Captcha.Core/Resources` 目录。
 
@@ -277,6 +291,8 @@ builder.Services.AddTianaiCaptcha(options =>
 - **v1.2.0**：添加拼接验证码和文字点击验证码支持
 - **v1.3.0**：添加预生成验证码功能
 - **v1.4.0**：优化性能和资源管理
+- **v1.5.0**：添加旋转验证码模板蒙版功能，增强安全性和多样性
+- **v1.6.0**：添加滑块验证码模板蒙版功能，增强安全性和多样性
 
 ## 11. 贡献指南
 

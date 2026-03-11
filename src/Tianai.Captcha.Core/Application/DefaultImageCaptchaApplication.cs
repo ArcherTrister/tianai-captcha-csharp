@@ -198,7 +198,17 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
 
         // After valid
         var afterResult = _interceptor.AfterValid(context, type, matchParam, validData, basicValid);
-        return afterResult ?? basicValid;
+        var result = afterResult ?? basicValid;
+
+        // 二次验证处理
+        if (result.IsSuccess())
+        {
+            var secondaryToken = GenerateSecondaryToken();
+            CacheSecondaryVerification(secondaryToken);
+            result.Data = new { success = true, secondaryToken };
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -278,6 +288,53 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
     protected string GetKey(string id)
     {
         return _options.Prefix + ":" + id;
+    }
+
+    /// <summary>
+    /// 生成二次验证令牌
+    /// </summary>
+    protected string GenerateSecondaryToken()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// 缓存二次验证数据
+    /// </summary>
+    protected void CacheSecondaryVerification(string token)
+    {
+        var key = GetSecondaryKey(token);
+        var expire = _options.SecondaryVerifyExpire;
+        var data = new AnyMap { { "valid", true } };
+        
+        if (!_cacheStore.SetCache(key, data, expire, TimeUnit.Milliseconds))
+        {
+            _logger.LogError("缓存二次验证数据失败, token={Token}", token);
+        }
+    }
+
+    /// <summary>
+    /// 获取二次验证键
+    /// </summary>
+    protected string GetSecondaryKey(string token)
+    {
+        return _options.SecondaryVerifyKeyPrefix + ":" + token;
+    }
+
+    /// <summary>
+    /// 验证二次验证令牌
+    /// </summary>
+    public ApiResponse<object> VerifySecondaryToken(string token)
+    {
+        var key = GetSecondaryKey(token);
+        var validData = _cacheStore.GetAndRemoveCache(key);
+        
+        if (validData == null)
+        {
+            return ApiResponse<object>.OfMessage(ApiResponseStatusConstant.Expired);
+        }
+
+        return ApiResponse<object>.OfSuccess(new { success = true });
     }
 
     public IImageCaptchaResourceManager GetImageCaptchaResourceManager() => _generator.GetImageResourceManager();

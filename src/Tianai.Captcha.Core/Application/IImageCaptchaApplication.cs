@@ -18,6 +18,7 @@ public interface IImageCaptchaApplication : IDisposable
     ApiResponse<object> Matching(string id, ImageCaptchaTrack track);
     bool Matching(string id, float percentage);
     string? GetCaptchaTypeById(string id);
+    ApiResponse<object> VerifySecondaryToken(string token);
     IImageCaptchaResourceManager GetImageCaptchaResourceManager();
     IImageCaptchaValidator GetImageCaptchaValidator();
     IImageCaptchaGenerator GetImageCaptchaGenerator();

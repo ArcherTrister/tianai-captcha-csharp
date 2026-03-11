@@ -187,6 +187,7 @@ public class CaptchaPregenerationIntegrationTests
         public ApiResponse<object> Matching(string id, ImageCaptchaTrack track) => ApiResponse<object>.OfSuccess(true);
         public bool Matching(string id, float percentage) => true;
         public string? GetCaptchaTypeById(string id) => "SLIDER";
+        public ApiResponse<object> VerifySecondaryToken(string token) => ApiResponse<object>.OfSuccess(new { success = true });
         public IImageCaptchaResourceManager GetImageCaptchaResourceManager() => throw new NotImplementedException();
         public IImageCaptchaValidator GetImageCaptchaValidator() => throw new NotImplementedException();
         public IImageCaptchaGenerator GetImageCaptchaGenerator() => throw new NotImplementedException();

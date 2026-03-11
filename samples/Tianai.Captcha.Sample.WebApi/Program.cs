@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
-using System.Linq;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Tianai.Captcha.AspNetCore.Extensions;
 using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
@@ -20,7 +14,7 @@ var captchaBuilder = builder.Services.AddTianaiCaptcha(options =>
     options.InitDefaultResource = true;
     options.Expire[CaptchaType.WordImageClick] = 30000;
 })
-.AddResourceAssembly(Assembly.GetExecutingAssembly());
+.ScanAssembly(Assembly.GetExecutingAssembly());
 
 var app = builder.Build();
 

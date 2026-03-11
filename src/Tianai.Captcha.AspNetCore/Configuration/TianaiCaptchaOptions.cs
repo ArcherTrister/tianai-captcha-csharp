@@ -1,4 +1,3 @@
-using System.Reflection;
 using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
 using Tianai.Captcha.Core.Resource;
@@ -7,11 +6,6 @@ namespace Tianai.Captcha.AspNetCore.Configuration;
 
 public class TianaiCaptchaOptions : ImageCaptchaOptions
 {
-    /// <summary>
-    /// 二次验证配置
-    /// </summary>
-    public SecondaryVerificationOptions? Secondary { get; set; }
-
     /// <summary>
     /// 自定义背景图片资源列表 (对应 Java addResource)
     /// </summary>
@@ -35,5 +29,6 @@ public class TianaiCaptchaOptions : ImageCaptchaOptions
         CustomBackgroundResources = new();
         CustomTemplateResources = new();
         CustomFontResources = new();
+        Expire = new Dictionary<CaptchaType, long>();
     }
 }

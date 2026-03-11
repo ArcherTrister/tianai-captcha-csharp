@@ -8,6 +8,7 @@ public class RotateImageCaptchaGenerator : AbstractImageCaptchaGenerator
 {
     public const string TemplateActiveImageName = "active.png";
     public const string TemplateFixedImageName = "fixed.png";
+    public const string TemplateMaskImageName = "mask.png";
 
     protected override void DoInit() { }
 
@@ -22,6 +23,7 @@ public class RotateImageCaptchaGenerator : AbstractImageCaptchaGenerator
 
         using var fixedTemplate = GetTemplateImage(templateResource, TemplateFixedImageName);
         using var activeTemplate = GetTemplateImage(templateResource, TemplateActiveImageName);
+        using var maskTemplate = GetTemplateImageOrNull(templateResource, TemplateMaskImageName);
         var background = GetResourceImage(resourceImage);
 
         int x = background.Width / 2 - fixedTemplate.Width / 2;
@@ -31,40 +33,72 @@ public class RotateImageCaptchaGenerator : AbstractImageCaptchaGenerator
         var cutImage = CaptchaImageUtils.CutImage(background, fixedTemplate, x, y);
 
         // Overlay fixed template on background (with optional random rotation)
-        SKBitmap rotateFixed = fixedTemplate;
-        SKBitmap rotateActive = activeTemplate;
-        bool disposeRotated = false;
-
         if (param.Obfuscate)
         {
             int randomDegree = RandomInt(10, 350);
-            rotateFixed = CaptchaImageUtils.RotateImage(fixedTemplate, randomDegree);
-            rotateActive = CaptchaImageUtils.RotateImage(activeTemplate, randomDegree);
-            disposeRotated = true;
+            using var rotateFixed = CaptchaImageUtils.RotateImage(fixedTemplate, randomDegree);
+            CaptchaImageUtils.OverlayImage(background, rotateFixed, x, y);
         }
-
-        CaptchaImageUtils.OverlayImage(background, rotateFixed, x, y);
-
-        if (disposeRotated)
+        else
         {
-            rotateFixed.Dispose();
-            rotateActive.Dispose();
+            CaptchaImageUtils.OverlayImage(background, fixedTemplate, x, y);
         }
 
-        // Generate random rotation angle with enhanced randomness
+        // Generate random rotation angle
         int randomX = RandomInt(fixedTemplate.Width + 10, Math.Max(fixedTemplate.Width + 11, background.Width - 10));
-        // Add additional randomness to ensure different angles even with caching
-        double randomOffset = RandomInt(0, 360) / 10.0; // Add up to 36 degrees of random offset
         double degree = 360d - randomX / ((double)background.Width / 360d);
-        degree = (degree + randomOffset) % 360;
+        degree = (degree + RandomInt(0, 360) / 10.0) % 360;
+        if (degree < 0)
+        {
+            degree += 360;
+        }
 
-        // Overlay active template on cut image
-        CaptchaImageUtils.OverlayImage(cutImage, activeTemplate, 0, 0);
-
-        // Create matrix template and center overlay with rotation
+        // Create matrix template
         var matrixTemplate = CaptchaImageUtils.CreateTransparentImage(cutImage.Width, background.Height);
-        CaptchaImageUtils.CenterOverlayAndRotateImage(matrixTemplate, cutImage, degree);
-        cutImage.Dispose();
+        
+        // Process cut image with active template and mask
+        var processedImage = cutImage;
+        bool disposeProcessedImage = false;
+        
+        try
+        {
+            // Apply active template
+            if (activeTemplate != null)
+            {
+                var activeImage = CaptchaImageUtils.CreateTransparentImage(cutImage.Width, cutImage.Height);
+                CaptchaImageUtils.OverlayImage(activeImage, cutImage, 0, 0);
+                CaptchaImageUtils.OverlayImage(activeImage, activeTemplate, 0, 0);
+                processedImage = activeImage;
+                disposeProcessedImage = true;
+            }
+            
+            // Apply mask if available
+            if (maskTemplate != null)
+            {
+                var maskedImage = CaptchaImageUtils.CreateTransparentImage(processedImage.Width, processedImage.Height);
+                CaptchaImageUtils.OverlayImage(maskedImage, processedImage, 0, 0);
+                CaptchaImageUtils.OverlayImage(maskedImage, maskTemplate, 0, 0);
+                
+                if (disposeProcessedImage)
+                {
+                    processedImage.Dispose();
+                }
+                
+                processedImage = maskedImage;
+                disposeProcessedImage = true;
+            }
+            
+            // Rotate and overlay to matrix template
+            CaptchaImageUtils.CenterOverlayAndRotateImage(matrixTemplate, processedImage, degree);
+        }
+        finally
+        {
+            if (disposeProcessedImage)
+            {
+                processedImage.Dispose();
+            }
+            cutImage.Dispose();
+        }
 
         exchange.BackgroundImage = background;
         exchange.TemplateImage = matrixTemplate;

@@ -19,15 +19,10 @@ public class ImageCaptchaOptions
     /// </summary>
     public string DefaultResourcePrefix { get; set; } = "Tianai.Captcha.Core.Resources";
     
-    /// <summary>
-    /// 字体包路径 (格式: "type:path?tag=xxx")
-    /// </summary>
-    public List<string>? FontPath { get; set; }
-    
-    /// <summary>
-    /// 默认验证码过期时间(毫秒)
-    /// </summary>
-    private readonly long DefaultCaptchaExpire = 2000;
+    // /// <summary>
+    // /// 字体包路径 (格式: "type:path?tag=xxx")
+    // /// </summary>
+    // public List<string>? FontPath { get; set; }
 
     /// <summary>
     /// 各验证码类型的过期时间(毫秒)
@@ -46,6 +41,16 @@ public class ImageCaptchaOptions
     /// 缓存键计算时忽略的字段集合
     /// </summary>
     public HashSet<string>? LocalCacheIgnoredCacheFields { get; set; }
+    
+    /// <summary>
+    /// 二次验证过期时间(毫秒)
+    /// </summary>
+    public long SecondaryVerifyExpire { get; set; } = 120000;
+
+    /// <summary>
+    /// 二次验证缓存键前缀
+    /// </summary>
+    public string SecondaryVerifyKeyPrefix { get; set; } = "captcha:secondary";
 
     // ---- 验证码预生成池配置 ----
 
@@ -71,10 +76,10 @@ public class ImageCaptchaOptions
 
     /// <summary>
     /// 获取指定类型的过期时间(毫秒)，
-    /// 先查类型对应值，再查默认值，兜底 20000ms
+    /// 先查类型对应值，兜底默认 20000ms
     /// </summary>
     public long GetExpire(CaptchaType type)
     {
-        return Expire.GetValueOrDefault(type, DefaultCaptchaExpire);
+        return Expire.GetValueOrDefault(type, 20000);
     }
 }

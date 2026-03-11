@@ -116,7 +116,6 @@ coverage/
 *.opencover.xml
 *.trx
 *.xml
-*.html
 
 # ==============================
 # 📁 Logs, Temp, OS Artifacts
