@@ -1,0 +1,150 @@
+# ==============================
+# 🖥️ IDEs & Editors (ALL)
+# ==============================
+
+# --- Visual Studio (Windows & macOS) ---
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vcxproj.user
+*.vcxproj.filters.user
+*.vspscc
+*.vssscc
+.project
+*.pidb
+*.pgc
+*.plog
+*.VC.db
+*.VC.VC.opendb
+*.VC.VC.VC.opendb
+
+# --- Visual Studio Code ---
+.vscode/
+!.vscode/extensions.json      # 可选：团队共享插件
+!.vscode/settings.json        # 可选：工作区配置
+
+# --- JetBrains Rider / IntelliJ / ReSharper ---
+.idea/
+*.iml
+*.iws
+*.ipr
+*.dotSettings
+*.DotSettings.user
+ReSharper.*
+resharper*
+*.rider
+rider.*
+jetbrains*
+
+# --- MonoDevelop / Xamarin Studio ---
+*.userprefs
+*.pidb
+*.suo
+*.mdsolution
+*.mdproj
+
+# --- Emacs ---
+*~
+.#*
+.\#*
+\#*
+*.elc
+
+# --- Vim / Neovim ---
+*.swp
+*.swo
+*.un~
+Session.vim
+.netrwhist
+
+# --- Xcode (for .NET MAUI on macOS) ---
+xcuserdata/
+*.xccheckout
+*.xcshareddata/
+*.xcscheme
+
+# --- Sublime Text ---
+*.sublime-project
+*.sublime-workspace
+*.sublime-session
+
+# --- Atom ---
+.atom/
+*.atom.*
+
+# --- NetBeans ---
+nbproject/
+build/
+dist/
+
+# ==============================
+# 🛠️ .NET / dotnet CLI
+# ==============================
+bin/
+obj/
+
+# Published outputs (uncomment if NOT committing)
+#publish/
+#artifacts/
+
+# Runtime files (auto-generated)
+*.dll.config
+*.runtimeconfig.json
+*.deps.json
+*.ni.dll
+*.pdb
+*.xml
+*.json   # ⚠️ 谨慎：仅忽略生成的 json（如 swagger.json），主配置如 appsettings.json 应提交
+
+# ==============================
+# 📦 NuGet & Package Management
+# ==============================
+packages/
+.nuget/
+NuGet.Config          # 可选：若需私有源配置可提交；否则忽略
+global-packages/      # 用户级缓存，绝不可提交
+~/.nuget/             # 全局路径，不应出现在 repo 中
+
+# ==============================
+# 🧪 Tests & Coverage
+# ==============================
+TestResults/
+coverage/
+*.coveragexml
+*.opencover.xml
+*.trx
+*.xml
+*.html
+
+# ==============================
+# 📁 Logs, Temp, OS Artifacts
+# ==============================
+logs/
+*.log
+temp/
+tmp/
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+Icon?
+*.orig
+*.rej
+
+# ==============================
+# 🔐 Secrets & Environment
+# ==============================
+.env*
+!.env.example
+appsettings.Development.json
+appsettings.*.json
+secrets/
+*.secret
+*.key
+*.pem
+*.cer
+*.crt
+credentials/
+identity/
