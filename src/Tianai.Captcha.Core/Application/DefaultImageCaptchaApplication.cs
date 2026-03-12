@@ -23,6 +23,11 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
     private readonly ILogger _logger;
     private readonly ICaptchaPregenerationPool? _pregenerationPool;
 
+    protected DefaultImageCaptchaApplication()
+    {
+        
+    }
+
     public DefaultImageCaptchaApplication(
         IImageCaptchaGenerator generator,
         IImageCaptchaValidator validator,
@@ -75,19 +80,25 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
 
     public ApiResponse<ImageCaptchaResponse> GenerateCaptcha(GenerateParam param)
     {
+        _logger.LogDebug("开始生成验证码: type={Type}", param.CaptchaType);
         // 优先从预生成池获取验证码
         if (_pregenerationPool != null)
         {
-            var pregeneratedCaptcha = _pregenerationPool.GetCaptcha();
+            var captchaType = param.CaptchaType;
+            _logger.LogDebug("尝试从预生成池获取验证码: type={Type}", captchaType);
+            var pregeneratedCaptcha = _pregenerationPool.GetCaptcha(captchaType);
             if (pregeneratedCaptcha != null && !pregeneratedCaptcha.IsExpired())
             {
+                _logger.LogDebug("从预生成池成功获取验证码: id={Id}", pregeneratedCaptcha.Id);
                 // 缓存验证数据
                 if (pregeneratedCaptcha.ValidData.Count > 0)
                 {
+                    _logger.LogDebug("缓存预生成验证码验证数据: id={Id}", pregeneratedCaptcha.Id);
                     CacheVerification(pregeneratedCaptcha.Id, pregeneratedCaptcha.Type, pregeneratedCaptcha.ValidData);
                 }
                 return ApiResponse<ImageCaptchaResponse>.OfSuccess(pregeneratedCaptcha.Response);
             }
+            _logger.LogDebug("预生成池无可用验证码，回退到实时生成");
         }
 
         // 预生成池为空或无可用验证码，回退到实时生成
@@ -95,40 +106,63 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
         var type = param.CaptchaType;
 
         // Before generate captcha
+        _logger.LogDebug("执行验证码生成前拦截器");
         var beforeResult = _interceptor.BeforeGenerateCaptcha(context, type, param);
-        if (beforeResult != null) return beforeResult;
+        if (beforeResult != null)
+        {
+            _logger.LogDebug("验证码生成前拦截器返回结果");
+            return beforeResult;
+        }
 
         // Generate ID: type + "_" + UUID (matches Java)
         var id = GeneratorId(param);
+        _logger.LogDebug("生成验证码ID: {Id}", id);
 
         // Generate image
+        _logger.LogDebug("开始生成验证码图片: type={Type}", type);
         var info = _generator.GenerateCaptchaImage(param);
         if (info == null)
+        {
+            _logger.LogError("生成验证码失败，验证码生成为空");
             throw new ImageCaptchaException("生成验证码失败，验证码生成为空");
+        }
+        _logger.LogDebug("验证码图片生成成功: type={Type}, id={Id}", type, id);
 
         // Before generate valid data
+        _logger.LogDebug("执行验证码验证数据生成前拦截器");
         var beforeValidDataResult = _interceptor.BeforeGenerateImageCaptchaValidData(context, type, info);
-        if (beforeValidDataResult != null) return beforeValidDataResult;
+        if (beforeValidDataResult != null)
+        {
+            _logger.LogDebug("验证码验证数据生成前拦截器返回结果");
+            return beforeValidDataResult;
+        }
 
         // Generate validation data
+        _logger.LogDebug("开始生成验证码验证数据");
         var validData = _validator.GenerateImageCaptchaValidData(info);
+        _logger.LogDebug("验证码验证数据生成完成: 数据项数={Count}", validData.Count);
 
         // After generate valid data
+        _logger.LogDebug("执行验证码验证数据生成后拦截器");
         _interceptor.AfterGenerateImageCaptchaValidData(context, type, info, validData);
 
         // Cache validation data
         if (validData.Count > 0)
         {
+            _logger.LogDebug("缓存验证码验证数据: id={Id}", id);
             CacheVerification(id, type, validData);
         }
 
         // Create response
+        _logger.LogDebug("创建验证码响应: id={Id}", id);
         var response = ConvertToCaptchaResponse(id, info);
 
         // After generate captcha
+        _logger.LogDebug("执行验证码生成后拦截器");
         _interceptor.AfterGenerateCaptcha(context, type, info, response);
 
         param.RemoveParam(ParamKeyEnum.Id);
+        _logger.LogDebug("验证码生成完成: id={Id}, type={Type}", id, type);
         return response;
     }
 
@@ -139,38 +173,61 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
     /// <returns>预生成的验证码信息</returns>
     public (ApiResponse<ImageCaptchaResponse> Response, AnyMap ValidData) GenerateCaptchaWithoutCache(GenerateParam param)
     {
+        _logger.LogDebug("开始生成预生成验证码: type={Type}", param.CaptchaType);
         var context = _interceptor.CreateContext();
         var type = param.CaptchaType;
 
         // Before generate captcha
+        _logger.LogDebug("执行预生成验证码生成前拦截器");
         var beforeResult = _interceptor.BeforeGenerateCaptcha(context, type, param);
-        if (beforeResult != null) return (beforeResult, new AnyMap());
+        if (beforeResult != null)
+        {
+            _logger.LogDebug("预生成验证码生成前拦截器返回结果");
+            return (beforeResult, new AnyMap());
+        }
 
         // Generate ID: type + "_" + UUID (matches Java)
         var id = GeneratorId(param);
+        _logger.LogDebug("生成预生成验证码ID: {Id}", id);
 
         // Generate image
+        _logger.LogDebug("开始生成预生成验证码图片: type={Type}", type);
         var info = _generator.GenerateCaptchaImage(param);
         if (info == null)
+        {
+            _logger.LogError("生成预生成验证码失败，验证码生成为空");
             throw new ImageCaptchaException("生成验证码失败，验证码生成为空");
+        }
+        _logger.LogDebug("预生成验证码图片生成成功: type={Type}, id={Id}", type, id);
 
         // Before generate valid data
+        _logger.LogDebug("执行预生成验证码验证数据生成前拦截器");
         var beforeValidDataResult = _interceptor.BeforeGenerateImageCaptchaValidData(context, type, info);
-        if (beforeValidDataResult != null) return (beforeValidDataResult, new AnyMap());
+        if (beforeValidDataResult != null)
+        {
+            _logger.LogDebug("预生成验证码验证数据生成前拦截器返回结果");
+            return (beforeValidDataResult, new AnyMap());
+        }
 
         // Generate validation data
+        _logger.LogDebug("开始生成预生成验证码验证数据");
         var validData = _validator.GenerateImageCaptchaValidData(info);
+        _logger.LogDebug("预生成验证码验证数据生成完成: 数据项数={Count}", validData.Count);
 
         // After generate valid data
+        _logger.LogDebug("执行预生成验证码验证数据生成后拦截器");
         _interceptor.AfterGenerateImageCaptchaValidData(context, type, info, validData);
 
         // Create response
+        _logger.LogDebug("创建预生成验证码响应: id={Id}", id);
         var response = ConvertToCaptchaResponse(id, info);
 
         // After generate captcha
+        _logger.LogDebug("执行预生成验证码生成后拦截器");
         _interceptor.AfterGenerateCaptcha(context, type, info, response);
 
         param.RemoveParam(ParamKeyEnum.Id);
+        _logger.LogDebug("预生成验证码生成完成: id={Id}, type={Type}", id, type);
         return (response, validData);
     }
 
@@ -181,33 +238,54 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
 
     public ApiResponse<object> Matching(string id, MatchParam matchParam)
     {
+        _logger.LogDebug("开始验证验证码: id={Id}", id);
         var validData = GetVerification(id);
         if (validData == null)
+        {
+            _logger.LogDebug("验证码验证数据已过期或不存在: id={Id}", id);
             return ApiResponse<object>.OfMessage(ApiResponseStatusConstant.Expired);
+        }
 
-        var type = GetCaptchaTypeById(id) ?? CaptchaType.Slider.ToString();
+        // todo: Enum.Parse<CaptchaType>(typeStr)
+        var typeStr = GetCaptchaTypeById(id);
+        var type = typeStr != null ? Enum.Parse<CaptchaType>(typeStr) : CaptchaType.Slider;
+        _logger.LogDebug("解析验证码类型: id={Id}, type={Type}", id, type);
         var context = _interceptor.CreateContext();
 
+        // todo: type.ToString()
         // Before valid
-        var beforeResult = _interceptor.BeforeValid(context, type, matchParam, validData);
-        if (beforeResult != null && !beforeResult.IsSuccess()) return beforeResult;
+        _logger.LogDebug("执行验证码验证前拦截器: id={Id}", id);
+        var beforeResult = _interceptor.BeforeValid(context, type.ToString(), matchParam, validData);
+        if (beforeResult != null && !beforeResult.IsSuccess())
+        {
+            _logger.LogDebug("验证码验证前拦截器返回失败结果: id={Id}", id);
+            return beforeResult;
+        }
 
         // Validate
         var track = matchParam.Track ?? throw new ImageCaptchaException("Track is required");
+        _logger.LogDebug("开始验证验证码轨迹: id={Id}", id);
         var basicValid = _validator.Valid(track, validData);
+        _logger.LogDebug("验证码轨迹验证完成: id={Id}, success={Success}", id, basicValid.IsSuccess());
 
+        // todo: type.ToString()
         // After valid
-        var afterResult = _interceptor.AfterValid(context, type, matchParam, validData, basicValid);
+        _logger.LogDebug("执行验证码验证后拦截器: id={Id}", id);
+        var afterResult = _interceptor.AfterValid(context, type.ToString(), matchParam, validData, basicValid);
         var result = afterResult ?? basicValid;
+        _logger.LogDebug("验证码验证最终结果: id={Id}, success={Success}", id, result.IsSuccess());
 
         // 二次验证处理
         if (result.IsSuccess())
         {
             var secondaryToken = GenerateSecondaryToken();
+            _logger.LogDebug("生成二次验证令牌: token={Token}", secondaryToken);
             CacheSecondaryVerification(secondaryToken);
             result.Data = new { success = true, secondaryToken };
+            _logger.LogDebug("验证码验证成功，已生成二次验证令牌: id={Id}", id);
         }
 
+        _logger.LogDebug("验证码验证完成: id={Id}, success={Success}", id, result.IsSuccess());
         return result;
     }
 
@@ -223,7 +301,7 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
         var oriPercentage = cachePercentage.GetFloat(SimpleImageCaptchaValidator.PercentageKey);
         if (oriPercentage == null) return false;
 
-        var tolerant = cachePercentage.GetFloat(SimpleImageCaptchaValidator.TolerantKey, simpleValidator.DefaultTolerant);
+        var tolerant = cachePercentage.GetFloat(SimpleImageCaptchaValidator.TolerantKey, _options.DefaultTolerant);
         return SimpleImageCaptchaValidator.CheckPercentage(percentage, oriPercentage.Value, tolerant!.Value);
     }
 
@@ -326,14 +404,18 @@ public class DefaultImageCaptchaApplication : IImageCaptchaApplication
     /// </summary>
     public ApiResponse<object> VerifySecondaryToken(string token)
     {
+        _logger.LogDebug("开始验证二次验证令牌: token={Token}", token);
         var key = GetSecondaryKey(token);
+        _logger.LogDebug("生成二次验证令牌缓存键: key={Key}", key);
         var validData = _cacheStore.GetAndRemoveCache(key);
         
         if (validData == null)
         {
+            _logger.LogDebug("二次验证令牌已过期或不存在: token={Token}", token);
             return ApiResponse<object>.OfMessage(ApiResponseStatusConstant.Expired);
         }
 
+        _logger.LogDebug("二次验证令牌验证成功: token={Token}", token);
         return ApiResponse<object>.OfSuccess(new { success = true });
     }
 

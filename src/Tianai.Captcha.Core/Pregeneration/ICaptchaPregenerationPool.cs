@@ -12,9 +12,17 @@ public interface ICaptchaPregenerationPool
     
     /// <summary>
     /// 从池中获取一个验证码
+    /// // todo: 这是需要删除
     /// </summary>
     /// <returns>预生成的验证码，如果池为空则返回null</returns>
     PregeneratedCaptcha? GetCaptcha();
+    
+    /// <summary>
+    /// 从池中获取指定类型的验证码
+    /// </summary>
+    /// <param name="type">验证码类型</param>
+    /// <returns>预生成的验证码，如果池为空或没有指定类型的验证码则返回null</returns>
+    PregeneratedCaptcha? GetCaptcha(CaptchaType type);
     
     /// <summary>
     /// 检查池水位

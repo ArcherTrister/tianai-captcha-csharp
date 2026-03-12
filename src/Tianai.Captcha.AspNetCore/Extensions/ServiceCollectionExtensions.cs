@@ -1,10 +1,15 @@
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 using Tianai.Captcha.AspNetCore.Cache;
 using Tianai.Captcha.AspNetCore.Configuration;
 using Tianai.Captcha.Core.Application;
@@ -72,8 +77,9 @@ public static class ServiceCollectionExtensions
             var resourceManager = sp.GetRequiredService<IImageCaptchaResourceManager>();
             var imageTransform = sp.GetRequiredService<IImageTransform>();
             var interceptor = sp.GetRequiredService<ICaptchaInterceptor>();
+            var logger = sp.GetService<ILogger<MultiImageCaptchaGenerator>>();
 
-            var multi = new MultiImageCaptchaGenerator();
+            var multi = new MultiImageCaptchaGenerator(logger);
             multi.SetImageResourceManager(resourceManager);
             multi.SetImageTransform(imageTransform);
             multi.SetInterceptor(interceptor);
@@ -111,6 +117,8 @@ public static class ServiceCollectionExtensions
         // 注册预生成服务作为后台服务
         services.AddHostedService<CaptchaPregenerationService>();
 
+
+
         // Application - 使用 AddSingleton 而不是 TryAddSingleton，确保在所有配置完成后再注册
         services.AddSingleton<IImageCaptchaApplication>(sp =>
         {
@@ -121,6 +129,7 @@ public static class ServiceCollectionExtensions
             var interceptor = sp.GetRequiredService<ICaptchaInterceptor>();
             var resourceManager = sp.GetRequiredService<IImageCaptchaResourceManager>();
             var pregenerationPool = options.PregenerationPoolEnabled ? sp.GetRequiredService<ICaptchaPregenerationPool>() : null;
+            var logger = sp.GetService<ILogger<DefaultImageCaptchaApplication>>();
 
             // Initialize default resources
             if (options.InitDefaultResource)
@@ -185,7 +194,7 @@ public static class ServiceCollectionExtensions
                 finalGenerator.Init();
             }
 
-            return new DefaultImageCaptchaApplication(finalGenerator, validator, cacheStore, options, interceptor, pregenerationPool);
+            return new DefaultImageCaptchaApplication(finalGenerator, validator, cacheStore, options, interceptor, pregenerationPool, logger);
         });
 
         return new TianaiCaptchaBuilder(services);
@@ -344,4 +353,6 @@ public static class ServiceCollectionExtensions
             return Task.CompletedTask;
         }
     }
+
+
 }

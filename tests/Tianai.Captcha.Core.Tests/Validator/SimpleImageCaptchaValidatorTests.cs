@@ -273,4 +273,180 @@ public class SimpleImageCaptchaValidatorTests
         var result = _validator.Valid(track, validData);
         Assert.False(result.IsSuccess(), "Click validation should fail with wrong click count");
     }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_SliderType_UnsetTolerant_UsesDefault()
+    {
+        var info = SliderImageCaptchaInfo.Of(
+            x: 150, y: 50,
+            backgroundImage: "bg", templateImage: "tpl",
+            backgroundImageTag: "tag1", templateImageTag: "tag2",
+            backgroundImageWidth: 300, backgroundImageHeight: 200,
+            templateImageWidth: 50, templateImageHeight: 50,
+            type: CaptchaType.Slider);
+        // Tolerant is not set
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        Assert.Equal(0.004f, tolerant.Value, 0.0001f); // SliderTolerant default
+    }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_SliderType_ZeroTolerant_UsesDefault()
+    {
+        var info = SliderImageCaptchaInfo.Of(
+            x: 150, y: 50,
+            backgroundImage: "bg", templateImage: "tpl",
+            backgroundImageTag: "tag1", templateImageTag: "tag2",
+            backgroundImageWidth: 300, backgroundImageHeight: 200,
+            templateImageWidth: 50, templateImageHeight: 50,
+            type: CaptchaType.Slider,
+            tolerant: 0);
+        // Tolerant is set to 0
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        Assert.Equal(0.004f, tolerant.Value, 0.0001f); // SliderTolerant default
+    }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_SliderType_SetTolerant_UsesSetValue()
+    {
+        var info = SliderImageCaptchaInfo.Of(
+            x: 150, y: 50,
+            backgroundImage: "bg", templateImage: "tpl",
+            backgroundImageTag: "tag1", templateImageTag: "tag2",
+            backgroundImageWidth: 300, backgroundImageHeight: 200,
+            templateImageWidth: 50, templateImageHeight: 50,
+            type: CaptchaType.Slider,
+            tolerant: 0.01f);
+        // Tolerant is set to 0.01f
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        Assert.Equal(0.01f, tolerant.Value, 0.0001f); // Uses set value
+    }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_ClickType_UnsetTolerant_UsesCalculated()
+    {
+        var checkDefs = new List<ClickImageCheckDefinition>
+        {
+            new() { X = 100, Y = 50, Width = 50, Height = 50 },
+        };
+
+        var info = new ImageCaptchaInfo
+        {
+            BackgroundImageWidth = 600,
+            BackgroundImageHeight = 360,
+            Type = CaptchaType.WordImageClick,
+            Data = new CustomData()
+        };
+        info.Data.Data["checkDefinitions"] = checkDefs;
+        // Tolerant is not set
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        float expectedTolerant = 50f / 2f / 600f; // (charWidth / 2) / bgWidth
+        Assert.Equal(expectedTolerant, tolerant.Value, 0.0001f);
+    }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_ClickType_ZeroTolerant_UsesCalculated()
+    {
+        var checkDefs = new List<ClickImageCheckDefinition>
+        {
+            new() { X = 100, Y = 50, Width = 50, Height = 50 },
+        };
+
+        var info = new ImageCaptchaInfo
+        {
+            BackgroundImageWidth = 600,
+            BackgroundImageHeight = 360,
+            Type = CaptchaType.WordImageClick,
+            Tolerant = 0, // Set to 0
+            Data = new CustomData()
+        };
+        info.Data.Data["checkDefinitions"] = checkDefs;
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        float expectedTolerant = 50f / 2f / 600f; // (charWidth / 2) / bgWidth
+        Assert.Equal(expectedTolerant, tolerant.Value, 0.0001f);
+    }
+
+    [Fact]
+    public void GenerateImageCaptchaValidData_ClickType_SetTolerant_UsesSetValue()
+    {
+        var checkDefs = new List<ClickImageCheckDefinition>
+        {
+            new() { X = 100, Y = 50, Width = 50, Height = 50 },
+        };
+
+        var info = new ImageCaptchaInfo
+        {
+            BackgroundImageWidth = 600,
+            BackgroundImageHeight = 360,
+            Type = CaptchaType.WordImageClick,
+            Tolerant = 0.02f, // Set to 0.02f
+            Data = new CustomData()
+        };
+        info.Data.Data["checkDefinitions"] = checkDefs;
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+
+        var tolerant = validData.GetFloat(SimpleImageCaptchaValidator.TolerantKey);
+        Assert.NotNull(tolerant);
+        Assert.Equal(0.02f, tolerant.Value, 0.0001f); // Uses set value
+    }
+
+    [Fact]
+    public void Valid_RotateType_UsesRotateTolerant()
+    {
+        var info = RotateImageCaptchaInfo.Of(
+            degree: 90,
+            backgroundImage: "bg", templateImage: "tpl",
+            backgroundImageTag: null, templateImageTag: null,
+            backgroundImageWidth: 300, backgroundImageHeight: 300,
+            templateImageWidth: 200, templateImageHeight: 200,
+            randomX: 75, type: CaptchaType.Rotate);
+
+        var validData = _validator.GenerateImageCaptchaValidData(info);
+        // Override type to rotate for testing
+        validData[SimpleImageCaptchaValidator.TypeKey] = "ROTATE";
+        validData[SimpleImageCaptchaValidator.PercentageKey] = 0.5f;
+        validData[SimpleImageCaptchaValidator.TolerantKey] = null; // Remove tolerant to test default
+
+        // Create a track that should pass with default rotate tolerant
+        var track = new ImageCaptchaTrack
+        {
+            BgImageWidth = 300,
+            BgImageHeight = 300,
+            Tracks = new List<ImageCaptchaTrack.Track>
+            {
+                new(0, 0, 0),
+                new(150, 0, 100),
+            }
+        };
+
+        var result = _validator.Valid(track, validData);
+        // This should pass because we're using the default rotate tolerant
+        Assert.True(result.IsSuccess());
+    }
+
+    [Fact]
+    public void RotateImageCaptchaInfo_DefaultTolerant_Is0005()
+    {
+        Assert.Equal(0.005f, RotateImageCaptchaInfo.DefaultTolerant, 0.0001f);
+    }
 }

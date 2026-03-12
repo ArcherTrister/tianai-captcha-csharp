@@ -71,7 +71,7 @@ public class CaptchaPregenerationIntegrationTests
         _pregenerationPool.AddCaptcha(testCaptcha);
         
         // 从应用获取验证码
-        var response = _captchaApplication.GenerateCaptcha();
+        var response = _captchaApplication.GenerateCaptcha(CaptchaType.Slider);
         
         // 验证响应
         Assert.True(response.IsSuccess());
@@ -89,7 +89,7 @@ public class CaptchaPregenerationIntegrationTests
         _pregenerationPool.Clear();
         
         // 从应用获取验证码
-        var response = _captchaApplication.GenerateCaptcha();
+        var response = _captchaApplication.GenerateCaptcha(CaptchaType.Slider);
         
         // 验证响应
         Assert.True(response.IsSuccess());

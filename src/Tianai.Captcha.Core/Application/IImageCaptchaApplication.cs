@@ -9,7 +9,6 @@ namespace Tianai.Captcha.Core.Application;
 
 public interface IImageCaptchaApplication : IDisposable
 {
-    ApiResponse<ImageCaptchaResponse> GenerateCaptcha();
     ApiResponse<ImageCaptchaResponse> GenerateCaptcha(CaptchaType type);
     ApiResponse<ImageCaptchaResponse> GenerateCaptcha(CaptchaImageType captchaImageType);
     ApiResponse<ImageCaptchaResponse> GenerateCaptcha(CaptchaType type, CaptchaImageType captchaImageType);

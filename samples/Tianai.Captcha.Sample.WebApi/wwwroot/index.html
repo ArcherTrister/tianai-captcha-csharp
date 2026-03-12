@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
 
-    <link  rel="stylesheet" href="/tac/css/tac.css">
+    <link rel="stylesheet" href="/tac/css/tac.css">
     <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
     <script src="/tac/js/tac.min.js"></script>
 
@@ -15,17 +15,21 @@
         ul li {
             list-style: none;
         }
+
         * {
             margin: 0;
             padding: 0;
         }
-        .top{
+
+        .top {
             overflow: auto;
         }
-        .top li:hover{
+
+        .top li:hover {
             cursor: pointer;
         }
-        .top li{
+
+        .top li {
             float: left;
             height: 40px;
             width: 120px;
@@ -38,11 +42,13 @@
             box-sizing: border-box;
             border: 1px solid #409eff;
         }
+
         .captcha-iframe {
             width: 300px;
             height: 320px;
             border: none;
         }
+
         .after {
             color: #88949d;
         }
@@ -50,54 +56,69 @@
 </head>
 
 <body>
-<div>
-    <ul class="top">
-        <li onclick="openCaptcha('RANDOM')">随机</li>
-        <li onclick="openCaptcha('SLIDER')">滑块验证码</li>
-        <li onclick="openCaptcha('ROTATE')">旋转验证码</li>
-        <li onclick="openCaptcha('CONCAT')">滑动还原验证码</li>
-        <li onclick="openCaptcha('WORDIMAGECLICK')">点选验证码</li>
-    </ul>
-    <div id="captcha-box"></div>
-</div>
-<script>
-    let globalTAC;
-    const config = {
-        // 生成接口
-        requestCaptchaDataUrl: "/gen?type=RANDOM",
-        // 验证接口
-        validCaptchaUrl: "/check",
-        // 验证码绑定的div块
-        bindEl: "#captcha-box",
-        // 验证成功回调函数
-        validSuccess: (res, c, tac) => {
-            // 销毁验证码服务
-            tac.destroyWindow();
-            // 调用登录方法
-            this.login(res.data.id);
+    <div>
+        <ul class="top">
+            <li onclick="openCaptcha('RANDOM')">随机</li>
+            <li onclick="openCaptcha('SLIDER')">滑块验证码</li>
+            <li onclick="openCaptcha('ROTATE')">旋转验证码</li>
+            <li onclick="openCaptcha('CONCAT')">滑动还原验证码</li>
+            <li onclick="openCaptcha('WORDIMAGECLICK')">点选验证码</li>
+        </ul>
+        <div id="captcha-box"></div>
+    </div>
+    <script>
+        let globalTAC;
+        const config = {
+            // 生成接口
+            requestCaptchaDataUrl: "/api/captcha/generate?type=RANDOM",
+            // 验证接口
+            validCaptchaUrl: "/api/captcha/validate",
+            // 验证码绑定的div块
+            bindEl: "#captcha-box",
+            // 验证成功回调函数
+            validSuccess: (res, c, tac) => {
+                console.log(res);
+                // 销毁验证码服务
+                tac.destroyWindow();
+                // 调用登录方法
+                this.login(res.data.secondaryToken);
+            }
         }
-    }
-    const style = {
-        // 配置样式， logoURL地址
-        // logoUrl: "/images/logo.png"
-    }
-    function login(token) {
-        // 在执行登录时，将验证码token传过去进行二次校验
-        $.get("/check2?id=" + token,  (res) => {
-            alert("登录成功")
+        const style = {
+            // 配置样式， logoURL地址
+            // logoUrl: "/images/logo.png"
+        }
+        function login(secondaryToken) {
+            $.ajax({
+                url: "/api/captcha/verify-secondary",
+                type: "POST",
+                data: JSON.stringify({ token: secondaryToken }),
+                contentType: "application/json",
+                success: function (response) {
+                    console.log("Success:", response);
+                    if (response.code === 200) {
+                        alert("登录成功")
+                    } else {
+                        alert(response.msg)
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error:", status, error);
+                }
+            });
+        }
+        $(function () {
+            // 创建 TAC 启动验证码服务
+            globalTAC = new TAC(config, style).init();
         })
-    }
-    $(function () {
-        // 创建 TAC 启动验证码服务
-        globalTAC = new TAC(config, style).init();
-    })
-    function openCaptcha(type) {
-        if (globalTAC) {
-            globalTAC.destroyWindow();
+        function openCaptcha(type) {
+            if (globalTAC) {
+                globalTAC.destroyWindow();
+            }
+            config.requestCaptchaDataUrl = "/api/captcha/generate?type=" + type
+            globalTAC = new TAC(config, style).init();
         }
-        config.requestCaptchaDataUrl = "/gen?type="+type
-        globalTAC = new TAC(config, style).init();
-    }
-</script>
+    </script>
 </body>
+
 </html>

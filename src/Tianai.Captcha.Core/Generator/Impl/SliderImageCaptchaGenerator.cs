@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using Tianai.Captcha.Core.Common;
 using Tianai.Captcha.Core.Generator.Common;
@@ -10,11 +11,17 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
     public const string TemplateFixedImageName = "fixed.png";
     public const string TemplateMaskImageName = "mask.png";
 
+    public SliderImageCaptchaGenerator(ILogger<SliderImageCaptchaGenerator>? logger = null) : base(logger)
+    {
+    }
+
     protected override void DoInit() { }
 
     protected override void DoGenerateCaptchaImage(CaptchaExchange exchange)
     {
         var param = exchange.Param;
+        _logger.LogDebug("开始生成滑块验证码图片");
+        
         var templateResource = RequiredRandomGetTemplate(param.CaptchaType, param.TemplateImageTag);
         var resourceImage = RequiredRandomGetResource(param.CaptchaType, param.BackgroundImageTag);
 
@@ -28,18 +35,24 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
 
         int randomX = RandomInt(fixedTemplate.Width + 5, Math.Max(fixedTemplate.Width + 6, background.Width - fixedTemplate.Width - 10));
         int randomY = RandomInt(0, Math.Max(1, background.Height - fixedTemplate.Height));
+        _logger.LogDebug("生成随机位置: x={X}, y={Y}", randomX, randomY);
 
         // Cut the slider from background using fixed template as mask
+        _logger.LogDebug("开始切割滑块");
         var cutImage = CaptchaImageUtils.CutImage(background, fixedTemplate, randomX, randomY);
+        _logger.LogDebug("滑块切割完成");
 
         // Overlay the fixed template (hole) on background
+        _logger.LogDebug("在背景图上覆盖固定模板");
         CaptchaImageUtils.OverlayImage(background, fixedTemplate, randomX, randomY);
 
         // Handle obfuscation if enabled
         if (param.Obfuscate)
         {
+            _logger.LogDebug("启用混淆处理");
             using var obfuscateImage = CreateObfuscate(fixedTemplate);
             int obfuscateX = RandomObfuscateX(randomX, fixedTemplate.Width, background.Width);
+            _logger.LogDebug("混淆位置: x={X}", obfuscateX);
             CaptchaImageUtils.OverlayImage(background, obfuscateImage, obfuscateX, randomY);
         }
 
@@ -52,6 +65,7 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
             // Apply mask if available
             if (maskTemplate != null)
             {
+                _logger.LogDebug("应用掩码模板");
                 var maskedImage = CaptchaImageUtils.CreateTransparentImage(processedImage.Width, processedImage.Height);
                 CaptchaImageUtils.OverlayImage(maskedImage, processedImage, 0, 0);
                 CaptchaImageUtils.OverlayImage(maskedImage, maskTemplate, 0, 0);
@@ -61,15 +75,18 @@ public class SliderImageCaptchaGenerator : AbstractImageCaptchaGenerator
             }
             
             // Overlay active template on processed image
+            _logger.LogDebug("在处理后的图片上覆盖活动模板");
             CaptchaImageUtils.OverlayImage(processedImage, activeTemplate, 0, 0);
 
             // Create the template image (full height, slider at randomY position)
+            _logger.LogDebug("创建模板图片");
             var matrixTemplate = CaptchaImageUtils.CreateTransparentImage(activeTemplate.Width, background.Height);
             CaptchaImageUtils.OverlayImage(matrixTemplate, processedImage, 0, randomY);
             
             exchange.BackgroundImage = background;
             exchange.TemplateImage = matrixTemplate;
             exchange.TransferData = new SliderTransferData(randomX, randomY);
+            _logger.LogDebug("滑块验证码图片生成完成: x={X}, y={Y}", randomX, randomY);
         }
         finally
         {

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SkiaSharp;
 using Tianai.Captcha.Core.Common;
 using Tianai.Captcha.Core.Generator.Common;
@@ -13,13 +15,29 @@ public abstract class AbstractImageCaptchaGenerator : IImageCaptchaGenerator
     private ICaptchaInterceptor? _interceptor;
     private bool _initialized;
     protected readonly Random Rng = Random.Shared;
+    protected readonly ILogger _logger;
+
+    protected AbstractImageCaptchaGenerator()
+    {
+        
+    }
+
+    protected AbstractImageCaptchaGenerator(ILogger logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
 
     public IImageCaptchaGenerator Init()
     {
+        _logger.LogDebug("开始初始化验证码生成器");
         if (_imageTransform == null)
+        {
+            _logger.LogDebug("设置默认图片转换器");
             _imageTransform = new Impl.Base64ImageTransform();
+        }
         DoInit();
         _initialized = true;
+        _logger.LogDebug("验证码生成器初始化完成");
         return this;
     }
 
@@ -40,18 +58,29 @@ public abstract class AbstractImageCaptchaGenerator : IImageCaptchaGenerator
 
     public virtual ImageCaptchaInfo GenerateCaptchaImage(GenerateParam param)
     {
+        _logger.LogDebug("开始生成验证码图片: type={Type}", param.CaptchaType);
         AssertInit();
         var data = new CustomData();
         var exchange = CaptchaExchange.Create(data, param);
 
         // Before generate hook
+        _logger.LogDebug("执行验证码生成前钩子");
         var interceptorResult = BeforeGenerate(exchange);
-        if (interceptorResult != null) return interceptorResult;
+        if (interceptorResult != null)
+        {
+            _logger.LogDebug("验证码生成前钩子返回结果");
+            return interceptorResult;
+        }
 
+        _logger.LogDebug("执行验证码图片生成");
         DoGenerateCaptchaImage(exchange);
+        _logger.LogDebug("执行验证码信息包装前钩子");
         BeforeWrapImageCaptchaInfo(exchange);
+        _logger.LogDebug("包装验证码信息");
         var info = WrapImageCaptchaInfo(exchange);
+        _logger.LogDebug("执行验证码生成后钩子");
         AfterGenerateCaptchaImage(exchange, info);
+        _logger.LogDebug("验证码图片生成完成: type={Type}", param.CaptchaType);
         return info;
     }
 
@@ -89,34 +118,49 @@ public abstract class AbstractImageCaptchaGenerator : IImageCaptchaGenerator
     // Helpers
     protected ResourceMap RequiredRandomGetTemplate(CaptchaType type, string? tag)
     {
+        _logger.LogDebug("获取模板资源: type={Type}, tag={Tag}", type, tag);
         return _resourceManager.RandomGetTemplate(type, tag);
     }
 
     protected CaptchaResource RequiredRandomGetResource(CaptchaType type, string? tag)
     {
+        _logger.LogDebug("获取背景资源: type={Type}, tag={Tag}", type, tag);
         return _resourceManager.RandomGetResource(type, tag);
     }
 
     protected SKBitmap GetTemplateImage(ResourceMap templateImages, string imageName)
     {
+        _logger.LogDebug("获取模板图片: {ImageName}", imageName);
         var resource = templateImages.Get(imageName)
             ?? throw new ImageCaptchaException($"Template image not found: {imageName}");
         using var stream = _resourceManager.GetResourceStream(resource);
-        return CaptchaImageUtils.LoadImage(stream);
+        var bitmap = CaptchaImageUtils.LoadImage(stream);
+        _logger.LogDebug("模板图片加载成功: {ImageName}, width={Width}, height={Height}", imageName, bitmap.Width, bitmap.Height);
+        return bitmap;
     }
 
     protected SKBitmap? GetTemplateImageOrNull(ResourceMap templateImages, string imageName)
     {
+        _logger.LogDebug("尝试获取模板图片: {ImageName}", imageName);
         var resource = templateImages.Get(imageName);
-        if (resource == null) return null;
+        if (resource == null)
+        {
+            _logger.LogDebug("模板图片不存在: {ImageName}", imageName);
+            return null;
+        }
         using var stream = _resourceManager.GetResourceStream(resource);
-        return CaptchaImageUtils.LoadImage(stream);
+        var bitmap = CaptchaImageUtils.LoadImage(stream);
+        _logger.LogDebug("模板图片加载成功: {ImageName}, width={Width}, height={Height}", imageName, bitmap.Width, bitmap.Height);
+        return bitmap;
     }
 
     protected SKBitmap GetResourceImage(CaptchaResource resource)
     {
+        _logger.LogDebug("获取背景图片: data={Data}", resource.Data);
         using var stream = _resourceManager.GetResourceStream(resource);
-        return CaptchaImageUtils.LoadImage(stream);
+        var bitmap = CaptchaImageUtils.LoadImage(stream);
+        _logger.LogDebug("背景图片加载成功: width={Width}, height={Height}", bitmap.Width, bitmap.Height);
+        return bitmap;
     }
 
     protected int RandomInt(int origin, int bound)

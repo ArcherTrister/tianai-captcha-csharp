@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using SkiaSharp;
 
@@ -13,25 +14,38 @@ public static class CaptchaImageUtils
 
     public static SKBitmap LoadImage(Stream stream)
     {
-        return SKBitmap.Decode(stream) ?? throw new InvalidOperationException("Failed to decode image from stream");
+        Debug.WriteLine("开始加载图片");
+        var bitmap = SKBitmap.Decode(stream);
+        if (bitmap == null)
+        {
+            Debug.WriteLine("图片加载失败");
+            throw new InvalidOperationException("Failed to decode image from stream");
+        }
+        Debug.WriteLine($"图片加载成功: width={bitmap.Width}, height={bitmap.Height}");
+        return bitmap;
     }
 
     public static SKBitmap CreateTransparentImage(int width, int height)
     {
+        Debug.WriteLine($"创建透明图片: width={width}, height={height}");
         var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         var bitmap = new SKBitmap(info);
         bitmap.Erase(SKColors.Transparent);
+        Debug.WriteLine("透明图片创建完成");
         return bitmap;
     }
 
     public static void OverlayImage(SKBitmap baseImage, SKBitmap coverImage, int x, int y)
     {
+        Debug.WriteLine($"覆盖图片: x={x}, y={y}, coverWidth={coverImage.Width}, coverHeight={coverImage.Height}");
         using var canvas = new SKCanvas(baseImage);
         canvas.DrawBitmap(coverImage, x, y);
+        Debug.WriteLine("图片覆盖完成");
     }
 
     public static SKBitmap CutImage(SKBitmap oriImage, SKBitmap templateImage, int xPos, int yPos)
     {
+        Debug.WriteLine($"开始切割图片: xPos={xPos}, yPos={yPos}, templateWidth={templateImage.Width}, templateHeight={templateImage.Height}");
         int bw = templateImage.Width;
         int bh = templateImage.Height;
         var targetImage = CreateTransparentImage(bw, bh);
@@ -52,6 +66,7 @@ public static class CaptchaImageUtils
                 }
             }
         }
+        Debug.WriteLine("图片切割完成");
         return targetImage;
     }
 

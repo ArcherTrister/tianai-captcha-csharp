@@ -14,9 +14,9 @@ namespace Tianai.Captcha.Core.Resource.Impl;
     public class ResourceScanner
     {
         private readonly IImageCaptchaResourceManager _resourceManager;
-        private readonly ResourceValidator _validator = new();
-        private ResourceFilter _filter = ResourceFilter.CreateDefault();
-        private readonly ILogger<ResourceScanner> _logger;
+    private readonly ResourceValidator _validator;
+    private ResourceFilter _filter = ResourceFilter.CreateDefault();
+    private readonly ILogger<ResourceScanner> _logger;
 
         /// <summary>
         /// 构造函数
@@ -25,6 +25,7 @@ namespace Tianai.Captcha.Core.Resource.Impl;
         {
             _resourceManager = resourceManager;
             _logger = NullLogger<ResourceScanner>.Instance;
+            _validator = new ResourceValidator();
         }
 
         /// <summary>
@@ -34,6 +35,7 @@ namespace Tianai.Captcha.Core.Resource.Impl;
         {
             _resourceManager = resourceManager;
             _logger = logger ?? NullLogger<ResourceScanner>.Instance;
+            _validator = new ResourceValidator();
         }
 
         /// <summary>
@@ -403,7 +405,7 @@ namespace Tianai.Captcha.Core.Resource.Impl;
                             {
                                 Id = Guid.NewGuid().ToString(),
                                 Type = "file",
-                                Data = Path.Combine("BgImages", Path.GetFileName(typeDir), relativePath),
+                                Data = file, // Use full absolute path
                                 Tag = CommonConstant.DefaultTag
                             };
                             
@@ -503,7 +505,7 @@ namespace Tianai.Captcha.Core.Resource.Impl;
                     {
                         Id = Guid.NewGuid().ToString(),
                         Type = "file",
-                        Data = Path.Combine("Templates", Path.GetFileName(typeDir), relativePath),
+                        Data = file, // Use full absolute path
                         Tag = CommonConstant.DefaultTag
                     });
                 }
@@ -558,7 +560,7 @@ namespace Tianai.Captcha.Core.Resource.Impl;
                     {
                         Id = Guid.NewGuid().ToString(),
                         Type = "file",
-                        Data = Path.Combine("Fonts", relativePath),
+                        Data = file, // Use full absolute path
                         Tag = CommonConstant.DefaultTag
                     };
                     store.AddFontResource("Fonts", captchaResource);

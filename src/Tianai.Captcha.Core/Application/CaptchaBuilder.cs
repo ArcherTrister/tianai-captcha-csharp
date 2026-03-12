@@ -70,6 +70,16 @@ public class CaptchaBuilder
 
     public CaptchaBuilder Prefix(string prefix) { _options.Prefix = prefix; return this; }
 
+    public CaptchaBuilder DefaultTolerant(float tolerant) { _options.DefaultTolerant = tolerant; return this; }
+
+    public CaptchaBuilder SliderTolerant(float tolerant) { _options.SliderTolerant = tolerant; return this; }
+
+    public CaptchaBuilder RotateTolerant(float tolerant) { _options.RotateTolerant = tolerant; return this; }
+
+    public CaptchaBuilder ConcatTolerant(float tolerant) { _options.ConcatTolerant = tolerant; return this; }
+
+    public CaptchaBuilder WordImageClickTolerant(float tolerant) { _options.WordImageClickTolerant = tolerant; return this; }
+
     public CaptchaBuilder Expire(CaptchaType captchaType, long expireMs)
     {
         _options.Expire[captchaType] = expireMs;
@@ -87,7 +97,7 @@ public class CaptchaBuilder
         var cacheStore = _cacheStore ?? new MemoryCacheStore();
         var interceptor = _interceptor ?? EmptyCaptchaInterceptor.Instance;
         var imageTransform = _imageTransform ?? new Base64ImageTransform();
-        var validator = _validator ?? new SimpleImageCaptchaValidator();
+        var validator = _validator ?? new SimpleImageCaptchaValidator(_options);
 
         IImageCaptchaGenerator generator;
         if (_generator != null)

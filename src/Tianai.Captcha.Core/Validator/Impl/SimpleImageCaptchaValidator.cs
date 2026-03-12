@@ -1,6 +1,8 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
 
 namespace Tianai.Captcha.Core.Validator.Impl;
@@ -12,12 +14,23 @@ public class SimpleImageCaptchaValidator : IImageCaptchaValidator
     public const string TypeKey = "type";
     public const string ClickImageCheckOrderKey = "click_image_check_order";
 
-    public float DefaultTolerant { get; set; } = 0.02f;
     private readonly ILogger _logger;
+    private readonly ImageCaptchaOptions _options;
 
-    public SimpleImageCaptchaValidator(ILogger<SimpleImageCaptchaValidator>? logger = null)
+    public SimpleImageCaptchaValidator(ImageCaptchaOptions options, ILogger<SimpleImageCaptchaValidator>? logger = null)
     {
         _logger = logger ?? NullLogger<SimpleImageCaptchaValidator>.Instance;
+        _options = options;
+    }
+
+    // 为了支持依赖注入，添加一个接受IOptions<ImageCaptchaOptions>的构造函数
+    public SimpleImageCaptchaValidator(IOptions<ImageCaptchaOptions> options, ILogger<SimpleImageCaptchaValidator>? logger = null) : this(options.Value, logger)
+    {
+    }
+
+    // 为了保持测试的兼容性，添加一个无参数构造函数
+    public SimpleImageCaptchaValidator() : this(new ImageCaptchaOptions())
+    {
     }
 
     public AnyMap GenerateImageCaptchaValidData(ImageCaptchaInfo info)
@@ -45,45 +58,66 @@ public class SimpleImageCaptchaValidator : IImageCaptchaValidator
         float percentage = (float)info.RandomX.Value / info.BackgroundImageWidth;
         map[PercentageKey] = percentage;
 
-        float tolerant = info.Tolerant ?? DefaultTolerant;
+        float tolerant = info.Tolerant.HasValue && info.Tolerant.Value > 0 ? info.Tolerant.Value : _options.SliderTolerant;
         map[TolerantKey] = tolerant;
     }
 
     private void AddClickCheckData(ImageCaptchaInfo info, AnyMap map)
-    {
-        if (info.Data?.Data == null) return;
-
-        if (info.Data.Data.TryGetValue("checkDefinitions", out var defs) && defs is List<ClickImageCheckDefinition> checkDefs)
         {
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < checkDefs.Count; i++)
-            {
-                var def = checkDefs[i];
-                // Java stores center coordinates (block.startX + clickImgWidth/2);
-                // .NET generator stores left-top, so compute center here
-                float centerX = def.X + def.Width / 2f;
-                float centerY = def.Y + def.Height / 2f;
-                float vx = CalcPercentage(centerX, info.BackgroundImageWidth);
-                float vy = CalcPercentage(centerY, info.BackgroundImageHeight);
-                sb.Append($"{vx.ToString(CultureInfo.InvariantCulture)},{vy.ToString(CultureInfo.InvariantCulture)};");
+            if (info.Data?.Data == null) return;
 
-                // Java: dynamically calculate tolerant from first character's width
-                // tolerant = (charWidth / 2) / bgWidth
-                if (i == 0 && !map.ContainsKey(TolerantKey))
+            if (info.Data.Data.TryGetValue("checkDefinitions", out var defs) && defs is List<ClickImageCheckDefinition> checkDefs)
+            {
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < checkDefs.Count; i++)
                 {
-                    float tolerant = CalcPercentage(def.Width / 2f, info.BackgroundImageWidth);
-                    map[TolerantKey] = tolerant;
+                    var def = checkDefs[i];
+                    // Java stores center coordinates (block.startX + clickImgWidth/2);
+                    // .NET generator stores left-top, so compute center here
+                    float centerX = def.X + def.Width / 2f;
+                    float centerY = def.Y + def.Height / 2f;
+                    float vx = CalcPercentage(centerX, info.BackgroundImageWidth);
+                    float vy = CalcPercentage(centerY, info.BackgroundImageHeight);
+                    sb.Append($"{vx.ToString(CultureInfo.InvariantCulture)},{vy.ToString(CultureInfo.InvariantCulture)};");
+
+                    // Java: dynamically calculate tolerant from first character's width
+                    // tolerant = (charWidth / 2) / bgWidth
+                    if (i == 0 && !map.ContainsKey(TolerantKey))
+                    {
+                        float tolerant = info.Tolerant.HasValue && info.Tolerant.Value > 0 ? info.Tolerant.Value : CalcPercentage(def.Width / 2f, info.BackgroundImageWidth);
+                        map[TolerantKey] = tolerant;
+                    }
                 }
+                map[PercentageKey] = sb.ToString();
+                map[ClickImageCheckOrderKey] = true;
             }
-            map[PercentageKey] = sb.ToString();
-            map[ClickImageCheckOrderKey] = true;
         }
-    }
 
     public ApiResponse<object> Valid(ImageCaptchaTrack track, AnyMap validData)
     {
-        var type = validData.GetString(TypeKey, CaptchaType.Slider.ToString())!;
-        var tolerant = validData.GetFloat(TolerantKey, DefaultTolerant)!.Value;
+        // todo: type.ToString()
+        var typeStr = validData.GetString(TypeKey, CaptchaType.Slider.ToString())!;
+        var type = Enum.Parse<CaptchaType>(typeStr, true); // Use ignoreCase=true
+        float defaultTolerant;
+        switch (type)
+        {
+            case CaptchaType.Slider:
+                defaultTolerant = _options.SliderTolerant;
+                break;
+            case CaptchaType.Rotate:
+                defaultTolerant = _options.RotateTolerant;
+                break;
+            case CaptchaType.Concat:
+                defaultTolerant = _options.ConcatTolerant;
+                break;
+            case CaptchaType.WordImageClick:
+                defaultTolerant = _options.WordImageClickTolerant;
+                break;
+            default:
+                defaultTolerant = _options.DefaultTolerant;
+                break;
+        }
+        var tolerant = validData.GetFloat(TolerantKey, defaultTolerant)!.Value;
 
         bool valid;
         if (CaptchaTypeClassifier.IsSliderCaptcha(type))

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
@@ -18,7 +16,7 @@ public class ResourcesController : ControllerBase
         _captchaApp = captchaApp;
     }
 
-    [HttpGet("list")]
+    [HttpGet]
     public IActionResult ListResources()
     {
         var resourceManager = _captchaApp.GetImageCaptchaResourceManager();

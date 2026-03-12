@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using Tianai.Captcha.Core.Common;
 using Tianai.Captcha.Core.Interceptor;
 using Tianai.Captcha.Core.Resource;
@@ -7,20 +8,29 @@ namespace Tianai.Captcha.Core.Generator.Impl;
 
 public class MultiImageCaptchaGenerator : AbstractImageCaptchaGenerator
 {
-    private readonly ConcurrentDictionary<string, IImageCaptchaGenerator> _generatorMap = new();
-    private readonly Dictionary<string, IImageCaptchaGeneratorProvider> _providerMap = new();
+    private readonly ConcurrentDictionary<CaptchaType, IImageCaptchaGenerator> _generatorMap = new();
+    private readonly Dictionary<CaptchaType, IImageCaptchaGeneratorProvider> _providerMap = new();
     public CaptchaType DefaultCaptcha { get; set; } = CaptchaType.Slider;
+
+    public MultiImageCaptchaGenerator() : base(null)
+    {
+        
+    }
+
+    public MultiImageCaptchaGenerator(ILogger logger) : base(logger)
+    {
+    }
 
     protected override void DoInit()
     {
-        AddImageCaptchaGeneratorProvider(new CommonImageCaptchaGeneratorProvider(CaptchaType.Slider.ToString(),
-            (rm, it, ci) => { var g = new SliderImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; }));
-        AddImageCaptchaGeneratorProvider(new CommonImageCaptchaGeneratorProvider(CaptchaType.Rotate.ToString(),
-            (rm, it, ci) => { var g = new RotateImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; }));
-        AddImageCaptchaGeneratorProvider(new CommonImageCaptchaGeneratorProvider(CaptchaType.Concat.ToString(),
-            (rm, it, ci) => { var g = new ConcatImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; }));
-        AddImageCaptchaGeneratorProvider(new CommonImageCaptchaGeneratorProvider(CaptchaType.WordImageClick.ToString(),
-            (rm, it, ci) => { var g = new WordClickImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; }));
+        AddImageCaptchaGeneratorProvider(CaptchaType.Slider,
+            (rm, it, ci) => { var g = new SliderImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; });
+        AddImageCaptchaGeneratorProvider(CaptchaType.Rotate,
+            (rm, it, ci) => { var g = new RotateImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; });
+        AddImageCaptchaGeneratorProvider(CaptchaType.Concat,
+            (rm, it, ci) => { var g = new ConcatImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; });
+        AddImageCaptchaGeneratorProvider(CaptchaType.WordImageClick,
+            (rm, it, ci) => { var g = new WordClickImageCaptchaGenerator(); g.SetImageResourceManager(rm); g.SetImageTransform(it); g.SetInterceptor(ci); return g; });
     }
 
     protected override void DoGenerateCaptchaImage(CaptchaExchange exchange)
@@ -36,40 +46,28 @@ public class MultiImageCaptchaGenerator : AbstractImageCaptchaGenerator
 
     public override ImageCaptchaInfo GenerateCaptchaImage(GenerateParam param)
     {
-        var type = param.Type.ToString();
+        var type = param.CaptchaType;
+        _logger.LogInformation($"MultiImageCaptchaGenerator: Generating captcha of type: {type}");
         var generator = RequireGetCaptchaGenerator(type);
-        return generator.GenerateCaptchaImage(param);
+        _logger.LogInformation($"MultiImageCaptchaGenerator: Using generator: {generator.GetType().Name}");
+        var result = generator.GenerateCaptchaImage(param);
+        _logger.LogInformation($"MultiImageCaptchaGenerator: Generated captcha of type: {result.Type}");
+        return result;
     }
 
     public override ImageCaptchaInfo GenerateCaptchaImage(CaptchaType type)
     {
-        var typeStr = type.ToString();
-        var generator = RequireGetCaptchaGenerator(typeStr);
+        var generator = RequireGetCaptchaGenerator(type);
         return generator.GenerateCaptchaImage(type);
     }
 
     public override ImageCaptchaInfo GenerateCaptchaImage(CaptchaType type, string bgFormat, string tplFormat)
     {
-        var typeStr = type.ToString();
-        var generator = RequireGetCaptchaGenerator(typeStr);
+        var generator = RequireGetCaptchaGenerator(type);
         return generator.GenerateCaptchaImage(type, bgFormat, tplFormat);
     }
 
-    public ImageCaptchaInfo GenerateCaptchaImage(string type)
-    {
-        var generator = RequireGetCaptchaGenerator(type);
-        var captchaType = Enum.TryParse<CaptchaType>(type, true, out var result) ? result : CaptchaType.Slider;
-        return generator.GenerateCaptchaImage(captchaType);
-    }
-
-    public ImageCaptchaInfo GenerateCaptchaImage(string type, string bgFormat, string tplFormat)
-    {
-        var generator = RequireGetCaptchaGenerator(type);
-        var captchaType = Enum.TryParse<CaptchaType>(type, true, out var result) ? result : CaptchaType.Slider;
-        return generator.GenerateCaptchaImage(captchaType, bgFormat, tplFormat);
-    }
-
-    public IImageCaptchaGenerator RequireGetCaptchaGenerator(string type)
+    public IImageCaptchaGenerator RequireGetCaptchaGenerator(CaptchaType type)
     {
         return _generatorMap.GetOrAdd(type, t =>
         {
@@ -82,20 +80,28 @@ public class MultiImageCaptchaGenerator : AbstractImageCaptchaGenerator
         });
     }
 
-    public void AddImageCaptchaGeneratorProvider(IImageCaptchaGeneratorProvider provider)
+    public void AddImageCaptchaGeneratorProvider(CaptchaType type, Func<IImageCaptchaResourceManager, IImageTransform, ICaptchaInterceptor, IImageCaptchaGenerator> factory)
     {
-        _providerMap[provider.Type] = provider;
+        _providerMap[type] = new CommonImageCaptchaGeneratorProvider(type.ToString(), factory);
     }
 
-    public IImageCaptchaGeneratorProvider? RemoveImageCaptchaGeneratorProvider(string type)
+    public void AddImageCaptchaGeneratorProvider(IImageCaptchaGeneratorProvider provider)
+    {
+        if (Enum.TryParse<CaptchaType>(provider.Type, true, out var captchaType))
+        {
+            _providerMap[captchaType] = provider;
+        }
+    }
+
+    public IImageCaptchaGeneratorProvider? RemoveImageCaptchaGeneratorProvider(CaptchaType type)
     {
         _providerMap.Remove(type, out var provider);
         return provider;
     }
 
-    public void AddImageCaptchaGenerator(string key, IImageCaptchaGenerator generator)
+    public void AddImageCaptchaGenerator(CaptchaType type, IImageCaptchaGenerator generator)
     {
-        _generatorMap[key] = generator;
+        _generatorMap[type] = generator;
     }
 }
 

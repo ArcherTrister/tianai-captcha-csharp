@@ -1,5 +1,7 @@
 using System.IO;
 using System.Drawing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Tianai.Captcha.Core.Common;
 
 namespace Tianai.Captcha.Core.Resource.Impl;
@@ -9,6 +11,13 @@ namespace Tianai.Captcha.Core.Resource.Impl;
 /// </summary>
 public class ResourceValidator
 {
+    private readonly ILogger<ResourceValidator> _logger;
+
+    public ResourceValidator(ILogger<ResourceValidator>? logger = null)
+    {
+        _logger = logger ?? NullLogger<ResourceValidator>.Instance;
+    }
+
     /// <summary>
     /// 验证图片资源
     /// </summary>
@@ -24,15 +33,18 @@ public class ResourceValidator
             {
                 // 重置流位置
                 stream.Position = position;
+                _logger.LogDebug("图片资源验证成功: 长度={Length}", stream.Length);
                 return true;
             }
             
             // 重置流位置
             stream.Position = position;
+            _logger.LogDebug("图片资源验证失败: 长度为 0");
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug("图片资源验证异常: {ExceptionMessage}", ex.Message);
             return false;
         }
     }
@@ -45,10 +57,20 @@ public class ResourceValidator
         try
         {
             // 简单验证字体文件大小
-            return stream.Length > 0;
+            var isValid = stream.Length > 0;
+            if (isValid)
+            {
+                _logger.LogDebug("字体资源验证成功: 长度={Length}", stream.Length);
+            }
+            else
+            {
+                _logger.LogDebug("字体资源验证失败: 长度为 0");
+            }
+            return isValid;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug("字体资源验证异常: {ExceptionMessage}", ex.Message);
             return false;
         }
     }
@@ -64,10 +86,15 @@ public class ResourceValidator
         {
             case "BgImages":
             case "Templates":
-                return IsImageExtension(extension);
+                var isImage = IsImageExtension(extension);
+                _logger.LogDebug("验证图片扩展名: fileName={FileName}, extension={Extension}, isValid={IsValid}", fileName, extension, isImage);
+                return isImage;
             case "Fonts":
-                return IsFontExtension(extension);
+                var isFont = IsFontExtension(extension);
+                _logger.LogDebug("验证字体扩展名: fileName={FileName}, extension={Extension}, isValid={IsValid}", fileName, extension, isFont);
+                return isFont;
             default:
+                _logger.LogDebug("验证资源类型: fileName={FileName}, resourceType={ResourceType}, isValid={IsValid}", fileName, resourceType, true);
                 return true;
         }
     }

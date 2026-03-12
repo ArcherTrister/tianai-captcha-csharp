@@ -119,7 +119,7 @@ public class SliderImageCaptchaInfo : ImageCaptchaInfo
 public class RotateImageCaptchaInfo : ImageCaptchaInfo
 {
     public double Degree { get; set; }
-    public static readonly float DefaultTolerant = 0.03f;
+    public static readonly float DefaultTolerant = 0.005f;
 
     public RotateImageCaptchaInfo() { }
 

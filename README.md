@@ -185,31 +185,108 @@ builder.Services.AddTianaiCaptcha()
 
 ### 5.1 自定义资源
 
-您可以在项目中添加自定义的背景图片和模板图片：
+您可以在项目中添加自定义的背景图片和模板图片。资源文件需要按照特定的目录结构组织，否则可能无法被正确加载：
+
+#### 5.1.1 背景图片配置
+
+背景图片需要存放在 `BgImages` 目录下，并按照验证码类型进行分类，这是资源加载的关键要求：
 
 1. 创建 `Resources` 目录
-2. 在 `Resources` 下创建 `BgImages/All` 目录存放背景图片
-3. 在 `Resources` 下创建 `Templates` 目录，按验证码类型存放模板图片：
+2. 在 `Resources` 下创建 `BgImages` 目录
+3. 在 `BgImages` 下创建对应验证码类型的子目录：
+   - `BgImages/Slider`：仅滑块验证码使用的背景图片
+   - `BgImages/Rotate`：仅旋转验证码使用的背景图片
+   - `BgImages/Concat`：仅拼接验证码使用的背景图片
+   - `BgImages/WordImageClick`：仅文字点击验证码使用的背景图片
+   - `BgImages/All`：所有验证码类型共享的背景图片
+
+**重要说明**：
+- 背景图片必须放在上述对应验证码类型的子目录或 `All` 目录下，否则不会被加载
+- 直接放在 `BgImages` 根目录下的图片不会被识别和加载
+- 当生成特定类型的验证码时，系统会先查找对应类型目录下的图片，若没有则使用 `All` 目录下的图片
+- 建议为每种验证码类型准备专门的背景图片，以获得最佳效果
+
+#### 5.1.2 模板图片配置
+
+模板图片需要存放在 `Templates` 目录下，并按照验证码类型进行分类：
+
+1. 在 `Resources` 下创建 `Templates` 目录
+2. 在 `Templates` 下创建对应验证码类型的子目录：
    - `Templates/Slider`：滑块验证码模板
    - `Templates/Rotate`：旋转验证码模板
 
-### 5.2 旋转验证码模板蒙版
+每个模板目录下的文件命名规则：
+- 活动模板图片：命名为 `active_*.png`（如 `active_1.png`）
+- 固定模板图片：命名为 `fixed_*.png`（如 `fixed_1.png`）
+- 蒙版模板图片：命名为 `mask_*.png`（可选，如 `mask_1.png`）
+
+#### 5.1.3 字体资源配置
+
+字体资源需要存放在 `Fonts` 目录下：
+
+1. 在 `Resources` 下创建 `Fonts` 目录
+2. 将字体文件（如 .ttf 文件）放入 `Fonts` 目录
+
+### 5.2 扫描资源
+
+您可以使用以下方法扫描和加载资源：
+
+```csharp
+// 扫描程序集内嵌资源
+builder.Services.AddTianaiCaptcha()
+    .ScanAssembly(Assembly.GetExecutingAssembly());
+
+// 扫描目录资源
+builder.Services.AddTianaiCaptcha()
+    .ScanDirectory(Path.Combine(Directory.GetCurrentDirectory(), "Resources"));
+```
+
+### 5.3 资源目录结构示例
+
+```
+Resources/
+├── BgImages/
+│   ├── All/            # 所有验证码类型共享的背景图片
+│   │   ├── bg1.jpg
+│   │   └── bg2.jpg
+│   ├── Slider/         # 仅滑块验证码使用的背景图片
+│   │   └── slider_bg.jpg
+│   ├── Rotate/         # 仅旋转验证码使用的背景图片
+│   │   └── rotate_bg.jpg
+│   ├── Concat/         # 仅拼接验证码使用的背景图片
+│   │   └── concat_bg.jpg
+│   └── WordImageClick/ # 仅文字点击验证码使用的背景图片
+│       └── word_bg.jpg
+├── Templates/
+│   ├── Slider/         # 滑块验证码模板
+│   │   ├── active_1.png
+│   │   ├── fixed_1.png
+│   │   └── mask_1.png
+│   └── Rotate/         # 旋转验证码模板
+│       ├── active_1.png
+│       ├── fixed_1.png
+│       └── mask_1.png
+└── Fonts/              # 字体资源
+    └── SIMSUN.TTC
+```
+
+### 5.4 旋转验证码模板蒙版
 
 旋转验证码支持模板蒙版功能，您可以为旋转验证码添加蒙版图片，增强验证码的安全性和美观度：
 
-1. 在 `Templates/Rotate` 目录下添加 `mask.png` 文件作为蒙版图片
+1. 在 `Templates/Rotate` 目录下添加 `mask_*.png` 文件作为蒙版图片
 2. 蒙版图片会自动应用到验证码生成过程中
 3. 如果没有提供蒙版图片，验证码会正常生成，不影响功能
 
-### 5.3 滑块验证码模板蒙版
+### 5.5 滑块验证码模板蒙版
 
 滑块验证码也支持模板蒙版功能，您可以为滑块验证码添加蒙版图片，增强验证码的安全性和美观度：
 
-1. 在 `Templates/Slider` 目录下添加 `mask.png` 文件作为蒙版图片
+1. 在 `Templates/Slider` 目录下添加 `mask_*.png` 文件作为蒙版图片
 2. 蒙版图片会自动应用到验证码生成过程中
 3. 如果没有提供蒙版图片，验证码会正常生成，不影响功能
 
-### 5.4 内置资源
+### 5.6 内置资源
 
 库中已内置了一些默认资源，位于 `Tianai.Captcha.Core/Resources` 目录。
 
@@ -254,17 +331,29 @@ builder.Services.AddTianaiCaptcha(options =>
 
 ### 8.1 验证码不显示
 
-- 检查资源文件是否正确添加
+- 检查资源文件是否正确添加，特别是背景图片是否放在对应验证码类型的子目录或All目录下
 - 确认验证码生成调用是否正确
 - 检查网络请求是否成功
 
-### 8.2 验证失败
+### 8.2 资源加载失败
+
+**问题**：扫描文件夹添加资源没有效果
+
+**解决方案**：
+- **背景图片**：必须放在 `BgImages` 目录下的对应验证码类型子目录（如 `Slider`、`Rotate` 等）或 `All` 目录下，直接放在 `BgImages` 根目录下的图片不会被加载
+- **模板图片**：必须放在 `Templates` 目录下的对应验证码类型子目录（如 `Slider`、`Rotate`）
+- **字体资源**：必须放在 `Fonts` 目录下
+- 确保资源目录结构正确，参考第5.3节的资源目录结构示例
+- 检查资源文件格式是否支持（支持常见图片格式如jpg、png、webp等）
+- 确认资源文件路径是否正确，是否使用了正确的扫描方法
+
+### 8.3 验证失败
 
 - 检查验证码 ID 是否正确
 - 确认验证参数是否符合要求
 - 检查验证码是否已过期
 
-### 8.3 性能问题
+### 8.4 性能问题
 
 - 启用预生成功能
 - 优化资源文件大小

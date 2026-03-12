@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Tianai.Captcha.AspNetCore.Configuration;
 using Tianai.Captcha.Core.Application;
 using Tianai.Captcha.Core.Common;
 
@@ -12,70 +10,146 @@ namespace Tianai.Captcha.AspNetCore.Extensions;
 
 public static class EndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapCaptchaEndpoints(this IEndpointRouteBuilder endpoints, string prefix = "/api/captcha")
+    /// <summary>
+    /// 映射验证码端点
+    /// </summary>
+    /// <param name="app">Web 应用</param>
+    /// <returns>Web 应用</returns>
+    public static WebApplication MapCaptchaEndpoints(this WebApplication app)
     {
-        var group = endpoints.MapGroup(prefix);
+        var options = app.Services.GetRequiredService<IOptions<TianaiCaptchaOptions>>().Value;
+        var group = app.MapGroup(options.ApiEndpointPrefix);
+        var captchaTypes = CaptchaTypeHelper.GetAll().ToArray();
 
-        group.MapPost("/generate", async (HttpContext context, IImageCaptchaApplication app) =>
+        group.MapPost(options.GenerateEndpoint, (string type, IImageCaptchaApplication captchaApp) =>
         {
-            string? type = null;
-            try
+            CaptchaType captchaType;
+    
+            if (string.Equals(type, "RANDOM", StringComparison.OrdinalIgnoreCase))
             {
-                var body = await JsonSerializer.DeserializeAsync<JsonElement>(context.Request.Body);
-                if (body.TryGetProperty("type", out var typeProp))
-                    type = typeProp.GetString();
+                captchaType = captchaTypes[Random.Shared.Next(captchaTypes.Length)];
             }
-            catch { /* use default type */ }
+            else if (string.IsNullOrEmpty(type))
+            {
+                captchaType = CaptchaType.Slider;
+            }
+            else
+            {
+                captchaType = Enum.Parse<CaptchaType>(type, true);
+            }
+    
+            var result = captchaApp.GenerateCaptcha(captchaType);
 
-            var result = type != null ? app.GenerateCaptcha(Enum.Parse<CaptchaType>(type, true)) : app.GenerateCaptcha();
             return Results.Json(result);
         });
 
-        group.MapPost("/validate", async (HttpContext context, IImageCaptchaApplication app) =>
+        group.MapPost(options.ValidateEndpoint, (ValidateRequest request, IImageCaptchaApplication captchaApp) =>
         {
-            var body = await JsonSerializer.DeserializeAsync<ValidateRequest>(context.Request.Body, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-
-            if (body == null || string.IsNullOrEmpty(body.Id))
+            if (string.IsNullOrEmpty(request.Id))
                 return Results.Json(ApiResponse<object>.OfCheckError("id is required"));
 
             var track = new ImageCaptchaTrack
             {
-                BgImageWidth = body.BgImageWidth,
-                BgImageHeight = body.BgImageHeight,
-                TemplateImageWidth = body.TemplateImageWidth,
-                TemplateImageHeight = body.TemplateImageHeight,
-                StartTime = body.StartTime,
-                StopTime = body.StopTime,
-                Tracks = body.Tracks ?? new()
+                BgImageWidth = request.Data.BgImageWidth,
+                BgImageHeight = request.Data.BgImageHeight,
+                TemplateImageWidth = request.Data.TemplateImageWidth,
+                TemplateImageHeight = request.Data.TemplateImageHeight,
+                StartTime = request.Data.StartTime,
+                StopTime = request.Data.StopTime,
+                Tracks = request.Data.Tracks ?? new()
             };
 
-            var result = app.Matching(body.Id, track);
+            var result = captchaApp.Matching(request.Id, track);
             return Results.Json(result);
         });
 
-        group.MapPost("/verify-secondary", async (HttpContext context, IImageCaptchaApplication app) =>
+        group.MapPost(options.SecondaryVerifyEndpoint, (SecondaryVerifyRequest request, IImageCaptchaApplication captchaApp) =>
         {
-            var body = await JsonSerializer.DeserializeAsync<SecondaryVerifyRequest>(context.Request.Body, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-
-            if (body == null || string.IsNullOrEmpty(body.Token))
+            if (string.IsNullOrEmpty(request.Token))
                 return Results.Json(ApiResponse<object>.OfCheckError("token is required"));
 
-            var result = app.VerifySecondaryToken(body.Token);
+            var result = captchaApp.VerifySecondaryToken(request.Token);
             return Results.Json(result);
         });
 
-        return endpoints;
+        return app;
+    }
+
+    /// <summary>
+    /// 映射验证码端点
+    /// </summary>
+    /// <param name="app">应用构建器</param>
+    /// <returns>应用构建器</returns>
+    public static IApplicationBuilder MapCaptchaEndpoints(this IApplicationBuilder app)
+    {
+        app.UseEndpoints(endpoints => {
+            var options = endpoints.ServiceProvider.GetRequiredService<IOptions<TianaiCaptchaOptions>>().Value;
+            var group = endpoints.MapGroup(options.ApiEndpointPrefix);
+            var captchaTypes = CaptchaTypeHelper.GetAll().ToArray();
+
+            group.MapPost(options.GenerateEndpoint, (string type, IImageCaptchaApplication captchaApp) =>
+            {
+                CaptchaType captchaType;
+    
+                if (string.Equals(type, "RANDOM", StringComparison.OrdinalIgnoreCase))
+                {
+                    captchaType = captchaTypes[Random.Shared.Next(captchaTypes.Length)];
+                }
+                else if (string.IsNullOrEmpty(type))
+                {
+                    captchaType = CaptchaType.Slider;
+                }
+                else
+                {
+                    captchaType = Enum.Parse<CaptchaType>(type, true);
+                }
+    
+                var result = captchaApp.GenerateCaptcha(captchaType);
+
+                return Results.Json(result);
+            });
+
+            group.MapPost(options.ValidateEndpoint, (ValidateRequest request, IImageCaptchaApplication captchaApp) =>
+            {
+                if (string.IsNullOrEmpty(request.Id))
+                    return Results.Json(ApiResponse<object>.OfCheckError("id is required"));
+
+                var track = new ImageCaptchaTrack
+                {
+                    BgImageWidth = request.Data.BgImageWidth,
+                    BgImageHeight = request.Data.BgImageHeight,
+                    TemplateImageWidth = request.Data.TemplateImageWidth,
+                    TemplateImageHeight = request.Data.TemplateImageHeight,
+                    StartTime = request.Data.StartTime,
+                    StopTime = request.Data.StopTime,
+                    Tracks = request.Data.Tracks ?? new()
+                };
+
+                var result = captchaApp.Matching(request.Id, track);
+                return Results.Json(result);
+            });
+
+            group.MapPost(options.SecondaryVerifyEndpoint, (SecondaryVerifyRequest request, IImageCaptchaApplication captchaApp) =>
+            {
+                if (string.IsNullOrEmpty(request.Token))
+                    return Results.Json(ApiResponse<object>.OfCheckError("token is required"));
+
+                var result = captchaApp.VerifySecondaryToken(request.Token);
+                return Results.Json(result);
+            });
+        });
+        return app;
     }
 
     private class ValidateRequest
     {
         public string? Id { get; set; }
+        
+        public ValidateData Data { get; set; }
+    }
+    
+    private class ValidateData
+    {
         public int BgImageWidth { get; set; }
         public int BgImageHeight { get; set; }
         public int TemplateImageWidth { get; set; }

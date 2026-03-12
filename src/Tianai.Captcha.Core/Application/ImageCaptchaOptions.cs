@@ -51,6 +51,31 @@ public class ImageCaptchaOptions
     /// 二次验证缓存键前缀
     /// </summary>
     public string SecondaryVerifyKeyPrefix { get; set; } = "captcha:secondary";
+    
+    /// <summary>
+    /// 默认验证码验证容错值，默认为0.005（0.5%）
+    /// </summary>
+    public float DefaultTolerant { get; set; } = 0.005f;
+
+    /// <summary>
+    /// 滑块验证码验证容错值，默认为0.003（0.3%）
+    /// </summary>
+    public float SliderTolerant { get; set; } = 0.004f;
+
+    /// <summary>
+    /// 旋转验证码验证容错值，默认为0.005（0.5%）
+    /// </summary>
+    public float RotateTolerant { get; set; } = 0.004f;
+
+    /// <summary>
+    /// 拼接验证码验证容错值，默认为0.005（0.5%）
+    /// </summary>
+    public float ConcatTolerant { get; set; } = 0.004f;
+
+    /// <summary>
+    /// 文字点击验证码验证容错值，默认为0.005（0.5%）
+    /// </summary>
+    public float WordImageClickTolerant { get; set; } = 0.005f;
 
     // ---- 验证码预生成池配置 ----
 

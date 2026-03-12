@@ -22,6 +22,26 @@ public class TianaiCaptchaOptions : ImageCaptchaOptions
     public List<(string Type, CaptchaResource Resource)> CustomFontResources { get; }
 
     /// <summary>
+    /// API 端点前缀
+    /// </summary>
+    public string ApiEndpointPrefix { get; set; } = "/api/captcha";
+
+    /// <summary>
+    /// 验证码生成端点路径
+    /// </summary>
+    public string GenerateEndpoint { get; set; } = "/generate";
+
+    /// <summary>
+    /// 验证码验证端点路径
+    /// </summary>
+    public string ValidateEndpoint { get; set; } = "/validate";
+
+    /// <summary>
+    /// 二次验证端点路径
+    /// </summary>
+    public string SecondaryVerifyEndpoint { get; set; } = "/verify-secondary";
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     public TianaiCaptchaOptions()

@@ -2,22 +2,39 @@ namespace Tianai.Captcha.Core.Common;
 
 public static class CaptchaTypeClassifier
 {
-    private static readonly HashSet<string> SliderTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<CaptchaType> SliderTypes = new()
     {
-        CaptchaType.Slider.ToString(),
-        CaptchaType.Rotate.ToString(),
-        CaptchaType.Concat.ToString()
+        CaptchaType.Slider,
+        CaptchaType.Rotate,
+        CaptchaType.Concat
     };
 
-    private static readonly HashSet<string> ClickTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<CaptchaType> ClickTypes = new()
     {
-        CaptchaType.WordImageClick.ToString()
+        CaptchaType.WordImageClick
     };
 
-    public static bool IsSliderCaptcha(string type) => SliderTypes.Contains(type);
+    // todo: 是否需要字符串类型的判断
+    public static bool IsSliderCaptcha(string type)
+    {
+        return Enum.TryParse<CaptchaType>(type, true, out var captchaType) && SliderTypes.Contains(captchaType);
+    }
 
-    public static bool IsClickCaptcha(string type) => ClickTypes.Contains(type);
+    // todo: 是否需要字符串类型的判断
+    public static bool IsClickCaptcha(string type)
+    {
+        return Enum.TryParse<CaptchaType>(type, true, out var captchaType) && ClickTypes.Contains(captchaType);
+    }
 
-    public static bool IsJigsawCaptcha(string type) =>
-        CaptchaType.Concat.ToString().Equals(type, StringComparison.OrdinalIgnoreCase);
+    // todo: 是否需要字符串类型的判断
+    public static bool IsJigsawCaptcha(string type)
+    {
+        return Enum.TryParse<CaptchaType>(type, true, out var captchaType) && captchaType == CaptchaType.Concat;
+    }
+
+    public static bool IsSliderCaptcha(CaptchaType type) => SliderTypes.Contains(type);
+
+    public static bool IsClickCaptcha(CaptchaType type) => ClickTypes.Contains(type);
+
+    public static bool IsJigsawCaptcha(CaptchaType type) => type == CaptchaType.Concat;
 }

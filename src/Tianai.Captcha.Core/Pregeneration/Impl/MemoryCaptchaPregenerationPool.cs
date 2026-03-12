@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Tianai.Captcha.Core.Common;
 using Tianai.Captcha.Core.Pregeneration;
 
 namespace Tianai.Captcha.Core.Pregeneration.Impl;
@@ -41,6 +42,7 @@ public class MemoryCaptchaPregenerationPool : ICaptchaPregenerationPool
         }
     }
     
+    // todo: 是否需要此方法
     public PregeneratedCaptcha? GetCaptcha()
     {
         CleanExpiredCaptchas();
@@ -61,6 +63,53 @@ public class MemoryCaptchaPregenerationPool : ICaptchaPregenerationPool
         else
         {
             Debug.WriteLine($"[{_stopwatch.ElapsedMilliseconds}ms] 池为空，无法获取验证码");
+        }
+        
+        return null;
+    }
+    
+    public PregeneratedCaptcha? GetCaptcha(CaptchaType type)
+    {
+        CleanExpiredCaptchas();
+        
+        // 尝试找到指定类型的验证码
+        var tempList = new List<PregeneratedCaptcha>();
+        PregeneratedCaptcha? targetCaptcha = null;
+        
+        lock (_lock)
+        {
+            while (_captchaQueue.TryDequeue(out var captcha))
+            {
+                if (!captcha.IsExpired())
+                {
+                    if (captcha.Type == type)
+                    {
+                        targetCaptcha = captcha;
+                        break;
+                    }
+                    else
+                    {
+                        tempList.Add(captcha);
+                    }
+                }
+            }
+            
+            // 将非目标类型的验证码放回队列
+            foreach (var captcha in tempList)
+            {
+                _captchaQueue.Enqueue(captcha);
+            }
+        }
+        
+        if (targetCaptcha != null)
+        {
+            _lastGetTime = DateTime.Now;
+            Debug.WriteLine($"[{_stopwatch.ElapsedMilliseconds}ms] 获取验证码 {targetCaptcha.Id} (类型: {type})，剩余容量: {GetCurrentCount()}");
+            return targetCaptcha;
+        }
+        else
+        {
+            Debug.WriteLine($"[{_stopwatch.ElapsedMilliseconds}ms] 池为空或没有找到类型为 {type} 的验证码");
         }
         
         return null;
